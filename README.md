@@ -1,7 +1,7 @@
 # Work Time Tracker
 
 A modern web application for tracking work hours with a clean, user-friendly interface. Built with React, TypeScript, Spring Boot, and SQLite.
-
+Feel free to help :)
 ## Features
 
 - 👤 User Authentication (Register/Login)
