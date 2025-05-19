@@ -1,19 +1,13 @@
 pipeline {
     agent any
 
-    tools {
-        jdk 'JDK24'
-        nodejs 'Node18'
-        maven 'Maven3'
-    }
-
     environment {
-        NODE_VERSION = '18.17.0'
         DOCKER_IMAGE = 'work-tracker'
         DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -21,6 +15,12 @@ pipeline {
         }
 
         stage('Frontend Build') {
+            agent {
+                docker {
+                    image 'node:18.17'
+                    args '-v $HOME/.npm:/root/.npm' // optional: caching
+                }
+            }
             steps {
                 dir('app') {
                     sh 'npm install'
@@ -30,6 +30,12 @@ pipeline {
         }
 
         stage('Backend Build') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-21'
+                    args '-v $HOME/.m2:/root/.m2' // optional: caching
+                }
+            }
             steps {
                 dir('backend') {
                     sh 'mvn clean package -DskipTests'
@@ -51,7 +57,6 @@ pipeline {
             }
             steps {
                 script {
-                    // Add your docker registry credentials and URL
                     docker.withRegistry('https://your-registry-url', 'docker-credentials-id') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push('latest')
@@ -65,8 +70,6 @@ pipeline {
                 branch 'main'
             }
             steps {
-                // Add your deployment steps here
-                // Example: Deploy to a server using SSH
                 sshagent(['ssh-credentials-id']) {
                     sh '''
                         ssh user@your-server "cd /app && \
@@ -94,4 +97,4 @@ pipeline {
             echo 'Pipeline failed!'
         }
     }
-} 
+}
