@@ -3,7 +3,7 @@ import { useAuth, useAuthenticatedFetch } from '../context/AuthContext'
 import WorkCalendar from '../components/WorkCalendar'
 import '../styles/calendar.css'
 
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8080') + "/api/v1"
+const API_URL = (import.meta.env.VITE_API_URL || '') + "/api/v1"
 
 interface WorkEntry {
   id: number
