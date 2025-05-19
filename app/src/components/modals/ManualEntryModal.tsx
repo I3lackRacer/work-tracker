@@ -15,12 +15,9 @@ const ManualEntryModal = ({ isOpen, onClose, onSubmit }: ManualEntryModalProps) 
   useEffect(() => {
     if (isOpen) {
       const now = new Date()
-      const year = now.getFullYear()
-      const month = String(now.getMonth() + 1).padStart(2, '0')
-      const day = String(now.getDate()).padStart(2, '0')
-      const hours = String(now.getHours()).padStart(2, '0')
-      const minutes = String(now.getMinutes()).padStart(2, '0')
-      const timeStr = `${year}-${month}-${day}T${hours}:${minutes}`
+      // Adjust for timezone to ensure we get the correct local time
+      const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      const timeStr = localNow.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
       setStartTime(timeStr)
       setEndTime(timeStr)
     }
@@ -29,7 +26,16 @@ const ManualEntryModal = ({ isOpen, onClose, onSubmit }: ManualEntryModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await onSubmit(startTime, endTime, notes)
+      // Create Date objects from the input values
+      const startDate = new Date(startTime)
+      const endDate = new Date(endTime)
+      
+      // Convert to ISO strings without additional timezone adjustment
+      // The datetime-local input already provides the correct local time
+      const startTimeISO = startDate.toISOString()
+      const endTimeISO = endDate.toISOString()
+
+      await onSubmit(startTimeISO, endTimeISO, notes)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add manual entry')

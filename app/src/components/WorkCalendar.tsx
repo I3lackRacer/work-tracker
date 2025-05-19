@@ -7,6 +7,7 @@ import type { WorkSession } from '../types/work'
 
 interface WorkCalendarProps {
   workSessions: WorkSession[]
+  onAddManualEntry: (startTime: string, endTime: string, notes: string) => Promise<void>
 }
 
 interface WorkStats {
@@ -16,7 +17,7 @@ interface WorkStats {
   total: number
 }
 
-const WorkCalendar = ({ workSessions }: WorkCalendarProps) => {
+const WorkCalendar = ({ workSessions, onAddManualEntry }: WorkCalendarProps) => {
   const [stats, setStats] = useState<WorkStats>({
     daily: 0,
     weekly: 0,
@@ -73,6 +74,18 @@ const WorkCalendar = ({ workSessions }: WorkCalendarProps) => {
     borderColor: session.clockOut ? '#2563EB' : '#DC2626'
   }))
 
+  const handleDateSelect = async (selectInfo: any) => {
+    const startTime = selectInfo.start.toISOString()
+    const endTime = selectInfo.end.toISOString()
+    
+    try {
+      await onAddManualEntry(startTime, endTime, '')
+      selectInfo.view.calendar.unselect()
+    } catch (error) {
+      console.error('Failed to add manual entry:', error)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       <div className="grid grid-cols-4 gap-3 mb-4 shrink-0">
@@ -113,6 +126,13 @@ const WorkCalendar = ({ workSessions }: WorkCalendarProps) => {
           firstDay={1} // Start week on Monday
           locale="de" // Use German locale for date formatting
           dayHeaderFormat={{ weekday: 'short' }}
+          selectable={true}
+          selectMirror={true}
+          select={handleDateSelect}
+          selectConstraint={{
+            startTime: '06:00',
+            endTime: '22:00',
+          }}
         />
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useAuth, useAuthenticatedFetch } from '../context/AuthContext'
 import WorkCalendar from '../components/WorkCalendar'
 import ManualEntryModal from '../components/modals/ManualEntryModal'
 import EditSessionModal from '../components/modals/EditSessionModal'
+import DeleteConfirmationModal from '../components/modals/DeleteConfirmationModal'
 import WorkSessionCard from '../components/WorkSessionCard'
 import { formatTime, formatDuration, formatDateTimeForInput } from '../utils/dateUtils'
 import type { WorkSession } from '../types/work'
@@ -21,6 +22,8 @@ const WorkTracker = () => {
   const [manualDateTime, setManualDateTime] = useState('')
   const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<WorkSession | null>(null)
+  const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null)
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const { logout } = useAuth()
   const authenticatedFetch = useAuthenticatedFetch()
 
@@ -30,6 +33,14 @@ const WorkTracker = () => {
       setManualDateTime(formatDateTimeForInput(new Date()))
     }
   }, [isManualEntry])
+
+  // Load delete confirmation preference
+  useEffect(() => {
+    const skipDeleteConfirmation = localStorage.getItem('skipDeleteConfirmation') === 'true'
+    if (skipDeleteConfirmation) {
+      setShowDeleteConfirmation(false)
+    }
+  }, [])
 
   const fetchWorkEntries = async () => {
     try {
@@ -75,6 +86,12 @@ const WorkTracker = () => {
 
   const clockIn = async () => {
     try {
+      let timestamp
+      if (isManualEntry) {
+        const date = new Date(manualDateTime)
+        timestamp = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString()
+      }
+
       const response = await authenticatedFetch(`${API_URL}/work/clock-in`, {
         method: 'POST',
         headers: {
@@ -83,7 +100,7 @@ const WorkTracker = () => {
         },
         body: JSON.stringify({
           notes,
-          timestamp: isManualEntry ? new Date(manualDateTime).toISOString() : undefined
+          timestamp
         })
       })
 
@@ -106,6 +123,12 @@ const WorkTracker = () => {
 
   const clockOut = async () => {
     try {
+      let timestamp
+      if (isManualEntry) {
+        const date = new Date(manualDateTime)
+        timestamp = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString()
+      }
+
       const response = await authenticatedFetch(`${API_URL}/work/clock-out`, {
         method: 'POST',
         headers: {
@@ -114,7 +137,7 @@ const WorkTracker = () => {
         },
         body: JSON.stringify({
           notes,
-          timestamp: isManualEntry ? new Date(manualDateTime).toISOString() : undefined
+          timestamp
         })
       })
 
@@ -287,6 +310,29 @@ const WorkTracker = () => {
     XLSX.writeFile(wb, filename)
   }
 
+  const handleDeleteClick = (clockInId: number) => {
+    setDeletingSessionId(clockInId)
+    const skipDeleteConfirmation = localStorage.getItem('skipDeleteConfirmation') === 'true'
+    if (!skipDeleteConfirmation) {
+      setShowDeleteConfirmation(true)
+    } else {
+      deleteWorkSession(clockInId)
+    }
+  }
+
+  const handleDeleteConfirm = () => {
+    if (deletingSessionId !== null) {
+      deleteWorkSession(deletingSessionId)
+      setDeletingSessionId(null)
+    }
+    setShowDeleteConfirmation(false)
+  }
+
+  const handleNeverAskAgain = () => {
+    localStorage.setItem('skipDeleteConfirmation', 'true')
+    setShowDeleteConfirmation(false)
+  }
+
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
       <div className="px-4 py-2 border-b border-gray-800 shrink-0">
@@ -332,6 +378,16 @@ const WorkTracker = () => {
           session={editingSession}
         />
       )}
+
+      <DeleteConfirmationModal
+        isOpen={showDeleteConfirmation}
+        onClose={() => {
+          setShowDeleteConfirmation(false)
+          setDeletingSessionId(null)
+        }}
+        onConfirm={handleDeleteConfirm}
+        onNeverAskAgain={handleNeverAskAgain}
+      />
 
       {error && (
         <div className="mx-4 mt-2 bg-red-900/50 border border-red-500 text-red-200 px-4 py-2 rounded-lg shrink-0">
@@ -426,7 +482,7 @@ const WorkTracker = () => {
                       key={session.clockIn.id}
                       session={session}
                       onEdit={setEditingSession}
-                      onDelete={deleteWorkSession}
+                      onDelete={() => handleDeleteClick(session.clockIn.id)}
                     />
                   ))}
               </div>
@@ -435,7 +491,10 @@ const WorkTracker = () => {
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden">
-          <WorkCalendar workSessions={workSessions} />
+          <WorkCalendar 
+            workSessions={workSessions} 
+            onAddManualEntry={addManualEntry}
+          />
         </div>
       </div>
     </div>
