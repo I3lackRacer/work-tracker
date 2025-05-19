@@ -216,6 +216,14 @@ const WorkTracker = () => {
 
   const addManualEntry = async (startTime: string, endTime: string, notes: string) => {
     try {
+      // Convert local datetime to ISO string while preserving the local time
+      const startDate = new Date(startTime)
+      const endDate = new Date(endTime)
+      
+      // Adjust for timezone offset to preserve local time
+      const startTimeISO = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000).toISOString()
+      const endTimeISO = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString()
+
       const response = await authenticatedFetch(`${API_URL}/work/manual-entry`, {
         method: 'POST',
         headers: {
@@ -223,8 +231,8 @@ const WorkTracker = () => {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          startTime: new Date(startTime).toISOString(),
-          endTime: new Date(endTime).toISOString(),
+          startTime: startTimeISO,
+          endTime: endTimeISO,
           notes
         })
       })

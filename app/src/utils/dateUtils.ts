@@ -2,7 +2,7 @@ export const formatTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: true
+    hour12: false
   })
 }
 
@@ -22,4 +22,21 @@ export const formatDateTimeForInput = (date: Date) => {
   const hours = String(date.getHours()).padStart(2, '0')
   const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+export const formatDate = (date: Date) => {
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}.${month}.${year}`
+}
+
+export const getWeekStart = (date: Date) => {
+  const day = date.getDay()
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1) // Adjust when day is Sunday
+  return new Date(date.setDate(diff))
+}
+
+export const getWeekDays = () => {
+  return ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 } 

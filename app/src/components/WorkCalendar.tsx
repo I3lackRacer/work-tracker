@@ -32,7 +32,7 @@ const WorkCalendar = ({ workSessions }: WorkCalendarProps) => {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const weekStart = new Date(today)
-    weekStart.setDate(today.getDate() - today.getDay())
+    weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
     const completedSessions = workSessions.filter(session => session.clockOut)
@@ -110,6 +110,9 @@ const WorkCalendar = ({ workSessions }: WorkCalendarProps) => {
           slotMaxTime="22:00:00"
           allDaySlot={false}
           nowIndicator={true}
+          firstDay={1} // Start week on Monday
+          locale="de" // Use German locale for date formatting
+          dayHeaderFormat={{ weekday: 'short' }}
         />
       </div>
     </div>
