@@ -9,7 +9,7 @@ COPY app/ .
 RUN chmod +x node_modules/.bin/* && npm run build
 
 # Build backend
-FROM maven:3.9-eclipse-temurin-17-alpine as backend-build
+FROM maven:3.9-eclipse-temurin-24-alpine as backend-build
 WORKDIR /app
 COPY backend/pom.xml .
 COPY backend/src ./src
