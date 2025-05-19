@@ -72,8 +72,8 @@ pipeline {
             steps {
                 sshagent(['ssh-credentials-netcup-shared']) {
                     sh """
-                        ssh server@work.suellner.dev << 'ENDSSH'
-                            docker stop work-tracker || true
+                        ssh -o StrictHostKeyChecking=no server@work.suellner.dev "
+                            docker stop work-tracker || true &&
                             docker rm work-tracker || true
 
                             docker run -d --name work-tracker \\
