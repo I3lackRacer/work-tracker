@@ -1,47 +1,42 @@
 pipeline {
     agent any
 
+    tools {
+        jdk 'JDK24'
+        nodejs 'Node18'
+        maven 'Maven3'
+    }
+
     environment {
+        NODE_VERSION = '18.17.0'
         DOCKER_IMAGE = 'tim4308/work-tracker'
         DOCKER_TAG = "${BUILD_NUMBER}"
+        DEPLOY_SCRIPT = 'deploy.sh'
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        // stage('Frontend Build') {
-        //     agent {
-        //         docker {
-        //             image 'node:18.17'
-        //             args '-v $HOME/.npm:/root/.npm'
-        //         }
-        //     }
-        //     steps {
-        //         dir('app') {
-        //             sh 'npm install'
-        //             sh 'npm run build'
-        //         }
-        //     }
-        // }
+        stage('Frontend Build') {
+            steps {
+                dir('app') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
+            }
+        }
 
-        // stage('Backend Build') {
-        //     agent {
-        //         docker {
-        //             image 'my-maven-jdk24' // <- dein eigenes Image mit Java 24
-        //             args '-v $HOME/.m2:/root/.m2'
-        //         }
-        //     }
-        //     steps {
-        //         dir('backend') {
-        //             sh 'mvn clean package -DskipTests'
-        //         }
-        //     }
-        // }
+        stage('Backend Build') {
+            steps {
+                dir('backend') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
 
         stage('Docker Build') {
             steps {
@@ -57,7 +52,7 @@ pipeline {
             }
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-credentials') {
+                    docker.withRegistry('https://your-registry-url', 'docker-credentials-id') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push('latest')
                     }
@@ -70,23 +65,13 @@ pipeline {
                 branch 'main'
             }
             steps {
-                sshagent(['ssh-credentials-netcup-shared']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no server@work.suellner.dev 'docker stop work-tracker || true && \
-                            docker rm work-tracker || true && \
-                            docker run -d --name work-tracker \
-                                --network proxy \
-                                -v /etc/localtime:/etc/localtime:ro \
-                                -v /home/server/docker/work-tracker/database.db:/app/database.db \
-                                -e VITE_API_URL=work.suellner.dev \
-                                -l traefik.enable=true \
-                                -l traefik.http.routers.work-secure.entrypoints=websecure \
-                                -l "traefik.http.routers.work-secure.rule=Host(\`work.suellner.dev\`)" \
-                                -l traefik.http.routers.work-secure.tls=true \
-                                -l traefik.http.routers.work-secure.tls.certresolver=netcup \
-                                -l traefik.http.services.work.loadbalancer.server.port=8080 \
-                                ${DOCKER_IMAGE}:${DOCKER_TAG}'
-                    """
+                script {
+                    sshagent(['ssh-credentials-id']) {
+                        sh """
+                            scp ${DEPLOY_SCRIPT} server@work.suellner.dev:~/docker/work-tracker/${DEPLOY_SCRIPT}
+                            ssh server@work.suellner.dev "cd ~/docker/work-tracker/ && chmod +x ${DEPLOY_SCRIPT} && ./${DEPLOY_SCRIPT} ${DOCKER_TAG}"
+                        """
+                    }
                 }
             }
         }
