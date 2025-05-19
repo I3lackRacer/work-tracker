@@ -1,14 +1,7 @@
 pipeline {
     agent any
 
-    tools {
-        jdk 'JDK24'
-        nodejs 'Node18'
-        maven 'Maven3'
-    }
-
     environment {
-        NODE_VERSION = '18.17.0'
         DOCKER_IMAGE = 'tim4308/work-tracker'
         DOCKER_TAG = "${BUILD_NUMBER}"
         DEPLOY_SCRIPT = 'deploy.sh'
@@ -21,23 +14,7 @@ pipeline {
             }
         }
 
-        stage('Frontend Build') {
-            steps {
-                dir('app') {
-                    sh 'npm install'
-                    sh 'npm run build'
-                }
-            }
-        }
-
-        stage('Backend Build') {
-            steps {
-                dir('backend') {
-                    sh 'mvn clean package -DskipTests'
-                }
-            }
-        }
-
+        // Optional: baue das Image lokal
         stage('Docker Build') {
             steps {
                 script {
@@ -46,13 +23,14 @@ pipeline {
             }
         }
 
+        // Push nur auf main
         stage('Docker Push') {
             when {
                 branch 'main'
             }
             steps {
                 script {
-                    docker.withRegistry('https://your-registry-url', 'docker-credentials-id') {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-credentials') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push('latest')
                     }
@@ -60,13 +38,14 @@ pipeline {
             }
         }
 
+        // Deployment über Skript
         stage('Deploy') {
             when {
                 branch 'main'
             }
             steps {
                 script {
-                    sshagent(['ssh-credentials-id']) {
+                    sshagent(['ssh-credentials-netcup-shared']) {
                         sh """
                             scp ${DEPLOY_SCRIPT} server@work.suellner.dev:~/docker/work-tracker/${DEPLOY_SCRIPT}
                             ssh server@work.suellner.dev "cd ~/docker/work-tracker/ && chmod +x ${DEPLOY_SCRIPT} && ./${DEPLOY_SCRIPT} ${DOCKER_TAG}"
