@@ -72,23 +72,20 @@ pipeline {
             steps {
                 sshagent(['ssh-credentials-netcup-shared']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no server@work.suellner.dev "
-                            docker stop work-tracker || true &&
-                            docker rm work-tracker || true
-
-                            docker run -d --name work-tracker \\
-                                --network proxy \\
-                                -v /etc/localtime:/etc/localtime:ro \\
-                                -v /app/database.db:/app/database.db \\
-                                -e VITE_API_URL=work.suellner.dev \\
-                                -l traefik.enable=true \\
-                                -l traefik.http.routers.work-secure.entrypoints=websecure \\
-                                -l traefik.http.routers.work-secure.rule=Host\\(\\`work.suellner.dev\\`\\) \\
-                                -l traefik.http.routers.work-secure.tls=true \\
-                                -l traefik.http.routers.work-secure.tls.certresolver=netcup \\
-                                -l traefik.http.services.work.loadbalancer.server.port=8080 \\
-                                ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        ENDSSH
+                        ssh -o StrictHostKeyChecking=no server@work.suellner.dev 'docker stop work-tracker || true && \
+                            docker rm work-tracker || true && \
+                            docker run -d --name work-tracker \
+                                --network proxy \
+                                -v /etc/localtime:/etc/localtime:ro \
+                                -v /app/database.db:/app/database.db \
+                                -e VITE_API_URL=work.suellner.dev \
+                                -l traefik.enable=true \
+                                -l traefik.http.routers.work-secure.entrypoints=websecure \
+                                -l traefik.http.routers.work-secure.rule="Host(\\\`work.suellner.dev\\\`)" \
+                                -l traefik.http.routers.work-secure.tls=true \
+                                -l traefik.http.routers.work-secure.tls.certresolver=netcup \
+                                -l traefik.http.services.work.loadbalancer.server.port=8080 \
+                                ${DOCKER_IMAGE}:${DOCKER_TAG}'
                     """
                 }
             }
