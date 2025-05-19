@@ -1,0 +1,99 @@
+/* Calendar Dark Theme */
+.fc {
+  --fc-border-color: #374151;
+  --fc-button-bg-color: #4B5563;
+  --fc-button-border-color: #4B5563;
+  --fc-button-hover-bg-color: #6B7280;
+  --fc-button-hover-border-color: #6B7280;
+  --fc-button-active-bg-color: #6B7280;
+  --fc-today-bg-color: rgba(59, 130, 246, 0.1);
+  --fc-neutral-bg-color: #1F2937;
+  --fc-page-bg-color: #111827;
+  --fc-list-event-hover-bg-color: #2D3748;
+  --fc-highlight-color: rgba(59, 130, 246, 0.1);
+  height: 100% !important;
+}
+
+/* Ensure the calendar container takes full height */
+.fc-view-harness {
+  height: 100% !important;
+}
+
+.fc-view-harness-active {
+  height: 100% !important;
+}
+
+.fc-timegrid.fc-timeGridWeek-view,
+.fc-daygrid.fc-dayGridMonth-view {
+  height: 100% !important;
+}
+
+/* Make sure the header doesn't take too much space */
+.fc-header-toolbar {
+  padding: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.fc-theme-standard td, 
+.fc-theme-standard th,
+.fc-theme-standard .fc-scrollgrid {
+  border-color: var(--fc-border-color);
+}
+
+.fc-theme-standard .fc-scrollgrid {
+  border: none;
+}
+
+.fc-col-header-cell-cushion,
+.fc-daygrid-day-number,
+.fc-timegrid-axis-cushion,
+.fc-timegrid-slot-label-cushion,
+.fc-toolbar-title {
+  color: #E5E7EB;
+}
+
+.fc-button {
+  color: #E5E7EB !important;
+}
+
+.fc-timegrid-event-harness {
+  margin-right: 1px;
+}
+
+.fc-timegrid-now-indicator-line {
+  border-color: #DC2626;
+}
+
+.fc-timegrid-now-indicator-arrow {
+  border-color: #DC2626;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.fc-event {
+  border-radius: 4px;
+}
+
+.fc-day-today {
+  background: var(--fc-today-bg-color) !important;
+}
+
+/* Fix scrolling behavior */
+.fc .fc-scroller {
+  height: 100% !important;
+}
+
+.fc .fc-scroller-liquid-absolute {
+  position: relative !important;
+}
+
+/* Ensure the calendar fills its container */
+.fc-view {
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Make sure the grid takes full height */
+.fc .fc-scrollgrid-liquid {
+  height: 100% !important;
+} 
