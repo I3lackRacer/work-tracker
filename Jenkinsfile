@@ -14,34 +14,34 @@ pipeline {
             }
         }
 
-        stage('Frontend Build') {
-            agent {
-                docker {
-                    image 'node:18.17'
-                    args '-v $HOME/.npm:/root/.npm'
-                }
-            }
-            steps {
-                dir('app') {
-                    sh 'npm install'
-                    sh 'npm run build'
-                }
-            }
-        }
+        // stage('Frontend Build') {
+        //     agent {
+        //         docker {
+        //             image 'node:18.17'
+        //             args '-v $HOME/.npm:/root/.npm'
+        //         }
+        //     }
+        //     steps {
+        //         dir('app') {
+        //             sh 'npm install'
+        //             sh 'npm run build'
+        //         }
+        //     }
+        // }
 
-        stage('Backend Build') {
-            agent {
-                docker {
-                    image 'my-maven-jdk24' // <- dein eigenes Image mit Java 24
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
-            steps {
-                dir('backend') {
-                    sh 'mvn clean package -DskipTests'
-                }
-            }
-        }
+        // stage('Backend Build') {
+        //     agent {
+        //         docker {
+        //             image 'my-maven-jdk24' // <- dein eigenes Image mit Java 24
+        //             args '-v $HOME/.m2:/root/.m2'
+        //         }
+        //     }
+        //     steps {
+        //         dir('backend') {
+        //             sh 'mvn clean package -DskipTests'
+        //         }
+        //     }
+        // }
 
         stage('Docker Build') {
             steps {
