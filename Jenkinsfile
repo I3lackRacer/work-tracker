@@ -70,17 +70,26 @@ pipeline {
                 branch 'main'
             }
             steps {
-                sshagent(['ssh-credentials-id']) {
-                    sh '''
-                        ssh user@your-server "cd /app && \
-                        docker pull ${DOCKER_IMAGE}:${DOCKER_TAG} && \
-                        docker stop work-tracker || true && \
-                        docker rm work-tracker || true && \
-                        docker run -d --name work-tracker \
-                            -p 8080:8080 \
-                            -v /data/work-tracker:/app/data \
-                            ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                    '''
+                sshagent(['ssh-credentials-netcup-shared']) {
+                    sh """
+                        ssh server@work.suellner.dev << 'ENDSSH'
+                            docker stop work-tracker || true
+                            docker rm work-tracker || true
+
+                            docker run -d --name work-tracker \\
+                                --network proxy \\
+                                -v /etc/localtime:/etc/localtime:ro \\
+                                -v /app/database.db:/app/database.db \\
+                                -e VITE_API_URL=work.suellner.dev \\
+                                -l traefik.enable=true \\
+                                -l traefik.http.routers.work-secure.entrypoints=websecure \\
+                                -l traefik.http.routers.work-secure.rule=Host\\(\\`work.suellner.dev\\`\\) \\
+                                -l traefik.http.routers.work-secure.tls=true \\
+                                -l traefik.http.routers.work-secure.tls.certresolver=netcup \\
+                                -l traefik.http.services.work.loadbalancer.server.port=8080 \\
+                                ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        ENDSSH
+                    """
                 }
             }
         }
