@@ -11,10 +11,10 @@ DOCKER_TAG="$1"  # First argument is the build number
 docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
 
 # Stop and remove existing container
-docker-compose down || true
+docker compose down || true
 
 # Start the new container
-docker-compose up -d
+docker compose up -d
 
 # Clean up old images
 docker image prune -f

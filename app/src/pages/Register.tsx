@@ -85,11 +85,12 @@ const Register = () => {
 
           <div className="flex items-center justify-center">
             <div className="text-sm">
+              <span><b>Already have an account? </b></span>
               <Link
                 to="/login"
-                className="font-medium text-blue-400 hover:text-blue-300 transition-colors duration-200"
+                className="font-medium text-blue-400 hover:text-blue-300 transition-colors duration-200 underline"
               >
-                Already have an account? Sign in here
+                 Sign in here
               </Link>
             </div>
           </div>
