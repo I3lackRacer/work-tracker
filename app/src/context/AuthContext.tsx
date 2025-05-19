@@ -17,7 +17,6 @@ interface AuthContextType {
 interface AuthResponse {
   token: string
   username: string
-  // Add any other fields your API returns
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -63,7 +62,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUsername(storedUsername)
           }
         } else {
-          // Token is invalid, clear it
           localStorage.removeItem('token')
           localStorage.removeItem('username')
         }
@@ -153,8 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   )
 }
 
-// Custom hook for making authenticated API calls
-export const useAuthenticatedFetch = () => {
+  export const useAuthenticatedFetch = () => {
   const { token } = useAuth()
 
   return async (url: string, options: RequestInit = {}) => {
