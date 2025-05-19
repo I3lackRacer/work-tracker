@@ -15,9 +15,8 @@ const ManualEntryModal = ({ isOpen, onClose, onSubmit }: ManualEntryModalProps) 
   useEffect(() => {
     if (isOpen) {
       const now = new Date()
-      // Adjust for timezone to ensure we get the correct local time
       const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-      const timeStr = localNow.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
+      const timeStr = localNow.toISOString().slice(0, 16)
       setStartTime(timeStr)
       setEndTime(timeStr)
     }
@@ -26,12 +25,9 @@ const ManualEntryModal = ({ isOpen, onClose, onSubmit }: ManualEntryModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      // Create Date objects from the input values
       const startDate = new Date(startTime)
       const endDate = new Date(endTime)
       
-      // Convert to ISO strings without additional timezone adjustment
-      // The datetime-local input already provides the correct local time
       const startTimeISO = startDate.toISOString()
       const endTimeISO = endDate.toISOString()
 
