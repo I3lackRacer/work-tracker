@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth, useAuthenticatedFetch } from '../context/AuthContext'
 import WorkCalendar from '../components/WorkCalendar'
 import '../styles/calendar.css'
+import * as XLSX from 'xlsx'
 
 const API_URL = (import.meta.env.VITE_API_URL || '') + "/api/v1"
 
@@ -498,12 +499,58 @@ const WorkTracker = () => {
     }
   }
 
+  const exportToExcel = () => {
+    // Prepare data for export
+    const exportData = workSessions
+      .filter(session => session.clockOut) // Only include completed sessions
+      .map(session => ({
+        'Start Time': new Date(session.clockIn.timestamp).toLocaleString(),
+        'End Time': new Date(session.clockOut!.timestamp).toLocaleString(),
+        'Worked Time': formatDuration(session.clockIn.timestamp, session.clockOut!.timestamp),
+        'Start Notes': session.clockIn.notes || '',
+        'End Notes': session.clockOut!.notes || ''
+      }))
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(exportData)
+
+    // Set column widths
+    const colWidths = [
+      { wch: 20 }, // Start Time
+      { wch: 20 }, // End Time
+      { wch: 15 }, // Worked Time
+      { wch: 30 }, // Start Notes
+      { wch: 30 }  // End Notes
+    ]
+    ws['!cols'] = colWidths
+
+    // Create workbook
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Work Sessions')
+
+    // Generate filename with current date
+    const date = new Date().toISOString().split('T')[0]
+    const filename = `work_sessions_${date}.xlsx`
+
+    // Save file
+    XLSX.writeFile(wb, filename)
+  }
+
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
       <div className="px-4 py-2 border-b border-gray-800 shrink-0">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Work Time Tracker</h1>
           <div className="flex gap-3">
+            <button
+              onClick={exportToExcel}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Export Excel
+            </button>
             <button
               onClick={() => setIsManualEntryModalOpen(true)}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
