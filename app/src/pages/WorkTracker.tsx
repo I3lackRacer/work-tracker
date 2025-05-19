@@ -26,6 +26,7 @@ const WorkTracker = () => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const { logout, username } = useAuth()
   const authenticatedFetch = useAuthenticatedFetch()
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   // Set page title
   useEffect(() => {
@@ -350,7 +351,23 @@ const WorkTracker = () => {
               <p className="text-gray-400 text-sm">Welcome back, {username}!</p>
             )}
           </div>
-          <div className="flex gap-3">
+          
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {isMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+
+          {/* Desktop menu */}
+          <div className="hidden md:flex gap-3">
             <button
               onClick={exportToExcel}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 flex items-center gap-2"
@@ -374,6 +391,36 @@ const WorkTracker = () => {
             </button>
           </div>
         </div>
+
+        {/* Mobile menu */}
+        {isMenuOpen && (
+          <div className="md:hidden mt-4 space-y-2">
+            <button
+              onClick={exportToExcel}
+              className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Export Excel
+            </button>
+            <button
+              onClick={() => {
+                setIsManualEntryModalOpen(true)
+                setIsMenuOpen(false)
+              }}
+              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
+            >
+              Add Manual Entry
+            </button>
+            <button
+              onClick={logout}
+              className="w-full px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors duration-200"
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </div>
 
       <ManualEntryModal
