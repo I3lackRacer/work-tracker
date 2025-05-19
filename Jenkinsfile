@@ -1,47 +1,38 @@
 pipeline {
     agent any
 
+    tools {
+        jdk 'JDK24'
+        nodejs 'Node18'
+        maven 'Maven3'
+    }
+
     environment {
-        NODE_VERSION = '18.17.0'  // LTS version
+        NODE_VERSION = '18.17.0'
         DOCKER_IMAGE = 'work-tracker'
-        DOCKER_TAG = 'latest'
+        DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
-        stage('Setup') {
+        stage('Checkout') {
             steps {
-                // Clean workspace
-                cleanWs()
-                // Checkout code
                 checkout scm
-                // Setup Node.js
-                nodejs(nodeJSInstallationName: 'Node ' + NODE_VERSION) {
-                    sh 'npm install -g pnpm'
+            }
+        }
+
+        stage('Frontend Build') {
+            steps {
+                dir('app') {
+                    sh 'npm install'
+                    sh 'npm run build'
                 }
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Backend Build') {
             steps {
-                nodejs(nodeJSInstallationName: 'Node ' + NODE_VERSION) {
-                    sh 'pnpm install'
-                }
-            }
-        }
-
-        stage('Lint') {
-            steps {
-                nodejs(nodeJSInstallationName: 'Node ' + NODE_VERSION) {
-                    sh 'pnpm run lint'
-                }
-            }
-        }
-
-        stage('Build') {
-            steps {
-                nodejs(nodeJSInstallationName: 'Node ' + NODE_VERSION) {
-                    // Build frontend
-                    sh 'pnpm run build'
+                dir('backend') {
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
@@ -49,31 +40,43 @@ pipeline {
         stage('Docker Build') {
             steps {
                 script {
-                    // Build Docker image
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                 }
             }
         }
 
-        stage('Deploy') {
+        stage('Docker Push') {
+            when {
+                branch 'main'
+            }
             steps {
                 script {
-                    // Stop existing container if running
+                    // Add your docker registry credentials and URL
+                    docker.withRegistry('https://your-registry-url', 'docker-credentials-id') {
+                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
+                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
+            steps {
+                // Add your deployment steps here
+                // Example: Deploy to a server using SSH
+                sshagent(['ssh-credentials-id']) {
                     sh '''
-                        if docker ps -a | grep -q ${DOCKER_IMAGE}; then
-                            docker stop ${DOCKER_IMAGE}
-                            docker rm ${DOCKER_IMAGE}
-                        fi
-                    '''
-                    
-                    // Run new container
-                    sh '''
-                        docker run -d \
-                            --name ${DOCKER_IMAGE} \
-                            -p 3000:3000 \
-                            -e VITE_API_URL=\${API_URL} \
-                            --restart unless-stopped \
-                            ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        ssh user@your-server "cd /app && \
+                        docker pull ${DOCKER_IMAGE}:${DOCKER_TAG} && \
+                        docker stop work-tracker || true && \
+                        docker rm work-tracker || true && \
+                        docker run -d --name work-tracker \
+                            -p 8080:8080 \
+                            -v /data/work-tracker:/app/data \
+                            ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     '''
                 }
             }
@@ -81,17 +84,14 @@ pipeline {
     }
 
     post {
+        always {
+            cleanWs()
+        }
         success {
-            echo 'Deployment successful!'
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            echo 'Deployment failed!'
-        }
-        always {
-            // Clean up old images
-            sh '''
-                docker image prune -f
-            '''
+            echo 'Pipeline failed!'
         }
     }
 } 
