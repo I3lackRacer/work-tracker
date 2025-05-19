@@ -19,12 +19,9 @@ const EditSessionModal = ({ isOpen, onClose, onSubmit, session }: EditSessionMod
     if (isOpen) {
       const formatDateTime = (timestamp: string) => {
         const date = new Date(timestamp)
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        const hours = String(date.getHours()).padStart(2, '0')
-        const minutes = String(date.getMinutes()).padStart(2, '0')
-        return `${year}-${month}-${day}T${hours}:${minutes}`
+        // Adjust for timezone to ensure we get the correct local time
+        const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+        return localDate.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
       }
 
       setClockInTime(formatDateTime(session.clockIn.timestamp))
@@ -35,12 +32,9 @@ const EditSessionModal = ({ isOpen, onClose, onSubmit, session }: EditSessionMod
         setClockOutNotes(session.clockOut.notes || '')
       } else {
         const now = new Date()
-        const year = now.getFullYear()
-        const month = String(now.getMonth() + 1).padStart(2, '0')
-        const day = String(now.getDate()).padStart(2, '0')
-        const hours = String(now.getHours()).padStart(2, '0')
-        const minutes = String(now.getMinutes()).padStart(2, '0')
-        setClockOutTime(`${year}-${month}-${day}T${hours}:${minutes}`)
+        // Adjust for timezone to ensure we get the correct local time
+        const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        setClockOutTime(localNow.toISOString().slice(0, 16))
       }
     }
   }, [isOpen, session])
@@ -48,17 +42,25 @@ const EditSessionModal = ({ isOpen, onClose, onSubmit, session }: EditSessionMod
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      // Create Date objects from the input values
+      const startDate = new Date(clockInTime)
+      const endDate = new Date(clockOutTime)
+      
+      // Adjust for timezone offset to preserve local time
+      const startTimeISO = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000).toISOString()
+      const endTimeISO = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString()
+
       await onSubmit(
         session.clockIn.id,
         session.clockOut?.id,
-        clockInTime,
-        clockOutTime,
+        startTimeISO,
+        endTimeISO,
         clockInNotes,
         clockOutNotes
       )
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to edit session')
+      setError(err instanceof Error ? err.message : 'Failed to edit work session')
     }
   }
 
