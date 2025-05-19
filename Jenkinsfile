@@ -48,7 +48,7 @@ pipeline {
                     sshagent(['ssh-credentials-netcup-shared']) {
                         sh """
                             scp ${DEPLOY_SCRIPT} server@work.suellner.dev:~/docker/work-tracker/${DEPLOY_SCRIPT}
-                            ssh server@work.suellner.dev "cd ~/docker/work-tracker/ && chmod +x ${DEPLOY_SCRIPT} && ./${DEPLOY_SCRIPT} ${DOCKER_TAG}"
+                            ssh server@work.suellner.dev "cd ~/docker/work-tracker/ && chmod +x ${DEPLOY_SCRIPT} && ./${DEPLOY_SCRIPT}"
                         """
                     }
                 }

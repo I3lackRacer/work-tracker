@@ -5,10 +5,9 @@ set -e
 
 # Configuration
 DOCKER_IMAGE="tim4308/work-tracker"
-DOCKER_TAG="$1"  # First argument is the build number
 
 # Pull the new image
-docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
+docker pull ${DOCKER_IMAGE}:latest
 
 # Stop and remove existing container
 docker compose down || true
