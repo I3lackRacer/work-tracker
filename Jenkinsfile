@@ -18,7 +18,7 @@ pipeline {
             agent {
                 docker {
                     image 'node:18.17'
-                    args '-v $HOME/.npm:/root/.npm' // optional: caching
+                    args '-v $HOME/.npm:/root/.npm'
                 }
             }
             steps {
@@ -32,8 +32,8 @@ pipeline {
         stage('Backend Build') {
             agent {
                 docker {
-                    image 'maven:3.9-eclipse-temurin-21'
-                    args '-v $HOME/.m2:/root/.m2' // optional: caching
+                    image 'my-maven-jdk24' // <- dein eigenes Image mit Java 24
+                    args '-v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
