@@ -11,22 +11,26 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        // Forward all routes except /api/** to index.html
+        registry.addViewController("/")
+            .setViewName("forward:/index.html");
         registry.addViewController("/**/{path:[^\\.]*}")
             .setViewName("forward:/index.html");
     }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/assets/**")
-            .addResourceLocations("classpath:/static/assets/")
+        registry.addResourceHandler("/**")
+            .addResourceLocations("classpath:/static/")
             .setCachePeriod(3600)
             .resourceChain(true);
     }
 
     @Override
     public void configureContentNegotiation(ContentNegotiationConfigurer configurer) {
-        configurer.mediaType("css", new MediaType("text", "css"));
-        configurer.mediaType("js", new MediaType("application", "javascript"));
+        configurer
+            .defaultContentType(MediaType.TEXT_HTML)
+            .mediaType("css", new MediaType("text", "css"))
+            .mediaType("js", new MediaType("application", "javascript"))
+            .mediaType("html", MediaType.TEXT_HTML);
     }
 } 
