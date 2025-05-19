@@ -17,7 +17,15 @@ const Login = () => {
   }
 
   return (
-    <div className="h-full flex items-center justify-center px-4 sm:px-6 lg:px-8">
+    <div className="h-full flex items-center justify-center px-4 sm:px-6 lg:px-8 relative">
+      <a
+        href="https://github.com/I3lackRacer/work-tracker"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute bottom-4 right-4 text-gray-500 hover:text-gray-400 text-sm transition-colors duration-200"
+      >
+        Made by @I3lackRacer
+      </a>
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
