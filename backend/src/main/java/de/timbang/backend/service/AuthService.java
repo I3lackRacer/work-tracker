@@ -31,12 +31,10 @@ public class AuthService {
             throw new RuntimeException("Username already exists");
         }
 
-        // Create new user from request
         User user = new User();
         user.setUsername(request.username());
         user.setPassword(passwordEncoder.encode(request.password()));
 
-        // Save the user to the database
         userRepository.save(user);
 
         return "User registered successfully";
@@ -49,12 +47,10 @@ public class AuthService {
             throw new RuntimeException("Invalid username or password");
         }
 
-        // Check if the passwords match
         if (!passwordEncoder.matches(credentials.password(), user.get().getPassword())) {
             throw new RuntimeException("Invalid username or password");
         }
 
-        // Generate JWT token
         return jwtService.generateToken(credentials.username());
     }
 
