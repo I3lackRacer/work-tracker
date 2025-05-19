@@ -8,7 +8,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    return <div className="h-screen flex items-center justify-center">Loading...</div>
   }
 
   return isAuthenticated ? children : <Navigate to="/login" />
@@ -18,7 +18,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    return <div className="h-screen flex items-center justify-center">Loading...</div>
   }
 
   return isAuthenticated ? <Navigate to="/" /> : children
@@ -28,7 +28,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="h-screen bg-gray-900 flex flex-col overflow-hidden">
           <Routes>
             <Route
               path="/login"
