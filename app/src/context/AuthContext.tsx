@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!response.ok) {
         const errorData = await response.json()
-        setError(errorData.message || 'Login failed')
+        setError(errorData.message || errorData.error || 'Login failed')
         return false
       }
 
@@ -110,11 +110,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false
       }
 
-      const data: AuthResponse = await response.json()
-      const bearerToken = data.token
-      localStorage.setItem('token', bearerToken)
-      setToken(bearerToken)
-      setIsAuthenticated(true)
       setError(null)
       return true
     } catch (err) {

@@ -12,6 +12,8 @@ import de.timbang.backend.model.WorkConfig;
 import de.timbang.backend.model.WorkEntry;
 import de.timbang.backend.model.WorkEntry.EntryType;
 import de.timbang.backend.model.dto.request.ClockEntryRequest;
+import de.timbang.backend.model.dto.request.EditWorkEntryRequest;
+import de.timbang.backend.model.dto.request.ManualWorkEntryRequest;
 import de.timbang.backend.model.dto.request.WorkConfigRequest;
 import de.timbang.backend.model.dto.response.WorkConfigResponse;
 import de.timbang.backend.model.dto.response.WorkEntryResponse;
@@ -148,5 +150,112 @@ public class WorkService {
         config.setWorkDays(request.workDays());
 
         return WorkConfigResponse.fromEntity(workConfigRepository.save(config));
+    }
+
+    public void deleteWorkEntryPair(String username, Long clockInId) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Get the clock-in entry
+        WorkEntry clockIn = workEntryRepository.findById(clockInId)
+            .orElseThrow(() -> new RuntimeException("Work entry not found"));
+
+        // Verify ownership
+        if (!clockIn.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Unauthorized to delete this entry");
+        }
+
+        // Verify it's a clock-in entry
+        if (clockIn.getType() != EntryType.CLOCK_IN) {
+            throw new RuntimeException("Selected entry is not a clock-in entry");
+        }
+
+        // Find the corresponding clock-out entry
+        WorkEntry clockOut = workEntryRepository.findFirstByUserAndTimestampGreaterThanAndTypeOrderByTimestampAsc(
+            user, clockIn.getTimestamp(), EntryType.CLOCK_OUT);
+
+        if (clockOut != null) {
+            workEntryRepository.delete(clockOut);
+        }
+        workEntryRepository.delete(clockIn);
+    }
+
+    public WorkEntryResponse addManualWorkEntry(String username, ManualWorkEntryRequest request) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Validate times
+        if (request.startTime() == null || request.endTime() == null) {
+            throw new RuntimeException("Start time and end time are required");
+        }
+        if (request.startTime().isAfter(request.endTime())) {
+            throw new RuntimeException("Start time must be before end time");
+        }
+
+        // Create clock-in entry
+        WorkEntry clockIn = new WorkEntry();
+        clockIn.setUser(user);
+        clockIn.setTimestamp(request.startTime());
+        clockIn.setType(EntryType.CLOCK_IN);
+        clockIn.setNotes(request.notes());
+        workEntryRepository.save(clockIn);
+
+        // Create clock-out entry
+        WorkEntry clockOut = new WorkEntry();
+        clockOut.setUser(user);
+        clockOut.setTimestamp(request.endTime());
+        clockOut.setType(EntryType.CLOCK_OUT);
+        clockOut.setNotes(request.notes());
+        workEntryRepository.save(clockOut);
+
+        return WorkEntryResponse.fromEntity(clockIn);
+    }
+
+    public WorkEntryResponse editWorkEntry(String username, Long entryId, EditWorkEntryRequest request) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Get the entry to edit
+        WorkEntry entry = workEntryRepository.findById(entryId)
+            .orElseThrow(() -> new RuntimeException("Work entry not found"));
+
+        // Verify ownership
+        if (!entry.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Unauthorized to edit this entry");
+        }
+
+        // Validate new timestamp
+        if (request.newTimestamp() == null) {
+            throw new RuntimeException("New timestamp is required");
+        }
+
+        // Get the paired entry (clock-in or clock-out)
+        WorkEntry pairedEntry;
+        if (entry.getType() == EntryType.CLOCK_IN) {
+            pairedEntry = workEntryRepository.findFirstByUserAndTimestampGreaterThanAndTypeOrderByTimestampAsc(
+                user, entry.getTimestamp(), EntryType.CLOCK_OUT);
+        } else {
+            pairedEntry = workEntryRepository.findFirstByUserAndTimestampLessThanAndTypeOrderByTimestampDesc(
+                user, entry.getTimestamp(), EntryType.CLOCK_IN);
+        }
+
+        // Validate timestamp order
+        if (entry.getType() == EntryType.CLOCK_IN && pairedEntry != null) {
+            if (request.newTimestamp().isAfter(pairedEntry.getTimestamp())) {
+                throw new RuntimeException("Clock-in time must be before clock-out time");
+            }
+        } else if (entry.getType() == EntryType.CLOCK_OUT && pairedEntry != null) {
+            if (request.newTimestamp().isBefore(pairedEntry.getTimestamp())) {
+                throw new RuntimeException("Clock-out time must be after clock-in time");
+            }
+        }
+
+        // Update the entry
+        entry.setTimestamp(request.newTimestamp());
+        if (request.notes() != null) {
+            entry.setNotes(request.notes());
+        }
+
+        return WorkEntryResponse.fromEntity(workEntryRepository.save(entry));
     }
 } 

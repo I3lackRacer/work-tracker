@@ -8,7 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import de.timbang.backend.model.dto.request.ClockEntryRequest;
+import de.timbang.backend.model.dto.request.EditWorkEntryRequest;
+import de.timbang.backend.model.dto.request.ManualWorkEntryRequest;
 import de.timbang.backend.model.dto.request.WorkConfigRequest;
 import de.timbang.backend.model.dto.response.WorkConfigResponse;
 import de.timbang.backend.model.dto.response.WorkEntryResponse;
@@ -77,12 +82,40 @@ public class WorkController {
     }
 
     @PutMapping("/config")
-    public ResponseEntity<?> updateConfig(
+    public ResponseEntity<WorkConfigResponse> updateConfig(
+            @AuthenticationPrincipal String username,
+            @RequestBody WorkConfigRequest request) {
+        return ResponseEntity.ok(workService.updateConfig(username, request));
+    }
+
+    @DeleteMapping("/entries/{clockInId}")
+    public ResponseEntity<Void> deleteWorkEntryPair(
             Authentication auth,
-            @RequestBody WorkConfigRequest newConfig) {
+            @PathVariable Long clockInId) {
+        workService.deleteWorkEntryPair(auth.getName(), clockInId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/manual-entry")
+    public ResponseEntity<?> addManualWorkEntry(
+            Authentication auth,
+            @RequestBody ManualWorkEntryRequest request) {
         try {
-            WorkConfigResponse config = workService.updateConfig(auth.getName(), newConfig);
-            return ResponseEntity.ok(config);
+            WorkEntryResponse entry = workService.addManualWorkEntry(auth.getName(), request);
+            return ResponseEntity.ok(entry);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/entries/{entryId}")
+    public ResponseEntity<?> editWorkEntry(
+            Authentication auth,
+            @PathVariable Long entryId,
+            @RequestBody EditWorkEntryRequest request) {
+        try {
+            WorkEntryResponse entry = workService.editWorkEntry(auth.getName(), entryId, request);
+            return ResponseEntity.ok(entry);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
