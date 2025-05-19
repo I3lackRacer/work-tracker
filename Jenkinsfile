@@ -77,7 +77,7 @@ pipeline {
                             docker run -d --name work-tracker \
                                 --network proxy \
                                 -v /etc/localtime:/etc/localtime:ro \
-                                -v /app/database.db:/app/database.db \
+                                -v /home/server/docker/work-tracker/database.db:/app/database.db \
                                 -e VITE_API_URL=work.suellner.dev \
                                 -l traefik.enable=true \
                                 -l traefik.http.routers.work-secure.entrypoints=websecure \
