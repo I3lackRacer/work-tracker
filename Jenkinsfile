@@ -81,7 +81,7 @@ pipeline {
                                 -e VITE_API_URL=work.suellner.dev \
                                 -l traefik.enable=true \
                                 -l traefik.http.routers.work-secure.entrypoints=websecure \
-                                -l "traefik.http.routers.work-secure.rule=Host(\`work.suellner.dev\`)" \
+                                -l "traefik.http.routers.work-secure.rule=Host('work.suellner.dev')" \
                                 -l traefik.http.routers.work-secure.tls=true \
                                 -l traefik.http.routers.work-secure.tls.certresolver=netcup \
                                 -l traefik.http.services.work.loadbalancer.server.port=8080 \
