@@ -57,7 +57,7 @@ pipeline {
             }
             steps {
                 script {
-                    docker.withRegistry('https://your-registry-url', 'docker-credentials-id') {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-credentials') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push('latest')
                     }
