@@ -24,8 +24,15 @@ const WorkTracker = () => {
   const [editingSession, setEditingSession] = useState<WorkSession | null>(null)
   const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null)
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
-  const { logout } = useAuth()
+  const { logout, username } = useAuth()
   const authenticatedFetch = useAuthenticatedFetch()
+
+  // Set page title
+  useEffect(() => {
+    if (username) {
+      document.title = `${username}'s Work Tracker`
+    }
+  }, [username])
 
   // Initialize manualDateTime with current time when switching to manual mode
   useEffect(() => {
@@ -337,7 +344,12 @@ const WorkTracker = () => {
     <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
       <div className="px-4 py-2 border-b border-gray-800 shrink-0">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Work Time Tracker</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Work Time Tracker</h1>
+            {username && (
+              <p className="text-gray-400 text-sm">Welcome back, {username}!</p>
+            )}
+          </div>
           <div className="flex gap-3">
             <button
               onClick={exportToExcel}

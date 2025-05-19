@@ -11,10 +11,12 @@ interface AuthContextType {
   error: string | null
   token: string | null
   isLoading: boolean
+  username: string | null
 }
 
 interface AuthResponse {
   token: string
+  username: string
   // Add any other fields your API returns
 }
 
@@ -25,6 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [username, setUsername] = useState<string | null>(null)
 
   const validateToken = async (token: string) => {
     try {
@@ -36,7 +39,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
         credentials: 'include'
       })
-      return response.ok
+      if (response.ok) {
+        const data = await response.json()
+        setUsername(data.username)
+        return true
+      }
+      return false
     } catch (err) {
       return false
     }
@@ -45,14 +53,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem('token')
+      const storedUsername = localStorage.getItem('username')
       if (storedToken) {
         const isValid = await validateToken(storedToken)
         if (isValid) {
           setToken(storedToken)
           setIsAuthenticated(true)
+          if (storedUsername) {
+            setUsername(storedUsername)
+          }
         } else {
           // Token is invalid, clear it
           localStorage.removeItem('token')
+          localStorage.removeItem('username')
         }
       }
       setIsLoading(false)
@@ -82,7 +95,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data: AuthResponse = await response.json()
       const bearerToken = data.token
       localStorage.setItem('token', bearerToken)
+      localStorage.setItem('username', data.username)
       setToken(bearerToken)
+      setUsername(data.username)
       setIsAuthenticated(true)
       setError(null)
       return true
@@ -120,7 +135,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('username')
     setToken(null)
+    setUsername(null)
     setIsAuthenticated(false)
     setError(null)
   }
@@ -130,7 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, register, logout, error, token, isLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, register, logout, error, token, isLoading, username }}>
       {children}
     </AuthContext.Provider>
   )
