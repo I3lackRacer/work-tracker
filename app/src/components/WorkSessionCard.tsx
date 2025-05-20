@@ -5,11 +5,14 @@ interface WorkSessionCardProps {
   session: WorkSession
   onEdit: (session: WorkSession) => void
   onDelete: (clockInId: number) => void
+  isDeleting?: boolean
 }
 
-const WorkSessionCard = ({ session, onEdit, onDelete }: WorkSessionCardProps) => {
+const WorkSessionCard = ({ session, onEdit, onDelete, isDeleting = false }: WorkSessionCardProps) => {
   return (
-    <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+    <div className={`bg-gray-800 rounded-lg p-3 border border-gray-700 transition-all duration-300 ${
+      isDeleting ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
+    }`}>
       <div className="flex justify-between items-center mb-2">
         <span className="font-medium">
           {session.clockIn.notes || session.clockOut?.notes || 'No notes'}
@@ -40,7 +43,7 @@ const WorkSessionCard = ({ session, onEdit, onDelete }: WorkSessionCardProps) =>
           </button>
         </div>
       </div>
-      <div className="text-sm text-gray-400">
+      <div className="text-gray-300">
         {formatTime(session.clockIn.timestamp)} - {
           session.clockOut && formatTime(session.clockOut.timestamp)
         }

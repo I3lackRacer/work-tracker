@@ -15,6 +15,8 @@ import de.timbang.backend.model.WorkEntry.EntryType;
 public interface WorkEntryRepository extends JpaRepository<WorkEntry, Long> {
     List<WorkEntry> findByUserOrderByIdDesc(User user);
     
+    List<WorkEntry> findByUserOrderByTimestampDesc(User user);
+    
     List<WorkEntry> findByUserAndTimestampBetweenOrderByTimestampDesc(
         User user, 
         LocalDateTime start, 

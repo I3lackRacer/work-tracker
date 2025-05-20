@@ -24,25 +24,23 @@ const WorkTracker = () => {
   const [editingSession, setEditingSession] = useState<WorkSession | null>(null)
   const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null)
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+  const [deletingSessions, setDeletingSessions] = useState<Set<number>>(new Set())
   const { logout, username } = useAuth()
   const authenticatedFetch = useAuthenticatedFetch()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  // Set page title
   useEffect(() => {
     if (username) {
       document.title = `${username}'s Work Tracker`
     }
   }, [username])
 
-  // Initialize manualDateTime with current time when switching to manual mode
   useEffect(() => {
     if (isManualEntry) {
       setManualDateTime(formatDateTimeForInput(new Date()))
     }
   }, [isManualEntry])
 
-  // Load delete confirmation preference
   useEffect(() => {
     const skipDeleteConfirmation = localStorage.getItem('skipDeleteConfirmation') === 'true'
     if (skipDeleteConfirmation) {
@@ -60,7 +58,6 @@ const WorkTracker = () => {
 
       const entries = await response.json()
 
-      // Group entries into sessions (pairs of clock-in and clock-out)
       const sessions: WorkSession[] = []
       let currentSession: WorkSession | null = null
 
@@ -77,7 +74,6 @@ const WorkTracker = () => {
 
       setWorkSessions(sessions)
 
-      // Check if user is currently working
       const lastSession = sessions[sessions.length - 1]
       if (lastSession && !lastSession.clockOut) {
         setIsWorking(true)
@@ -175,6 +171,10 @@ const WorkTracker = () => {
 
   const deleteWorkSession = async (clockInId: number) => {
     try {
+      setDeletingSessions(prev => new Set([...prev, clockInId]))
+
+      await new Promise(resolve => setTimeout(resolve, 300))
+
       const response = await authenticatedFetch(`${API_URL}/work/entries/${clockInId}`, {
         method: 'DELETE'
       })
@@ -184,9 +184,19 @@ const WorkTracker = () => {
       }
 
       setWorkSessions(workSessions.filter(session => session.clockIn.id !== clockInId))
+      setDeletingSessions(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(clockInId)
+        return newSet
+      })
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete work session')
+      setDeletingSessions(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(clockInId)
+        return newSet
+      })
     }
   }
 
@@ -199,7 +209,6 @@ const WorkTracker = () => {
     clockOutNotes: string
   ) => {
     try {
-      // Edit clock in
       const clockInResponse = await authenticatedFetch(`${API_URL}/work/entries/${clockInId}`, {
         method: 'PUT',
         headers: {
@@ -217,7 +226,6 @@ const WorkTracker = () => {
         throw new Error(errorData.error || 'Failed to edit clock in entry')
       }
 
-      // Edit clock out if it exists
       if (clockOutId) {
         const clockOutResponse = await authenticatedFetch(`${API_URL}/work/entries/${clockOutId}`, {
           method: 'PUT',
@@ -247,11 +255,9 @@ const WorkTracker = () => {
 
   const addManualEntry = async (startTime: string, endTime: string, notes: string) => {
     try {
-      // Convert local datetime to ISO string while preserving the local time
       const startDate = new Date(startTime)
       const endDate = new Date(endTime)
       
-      // Adjust for timezone offset to preserve local time
       const startTimeISO = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000).toISOString()
       const endTimeISO = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString()
 
@@ -282,9 +288,8 @@ const WorkTracker = () => {
   }
 
   const exportToExcel = () => {
-    // Prepare data for export
     const exportData = workSessions
-      .filter(session => session.clockOut) // Only include completed sessions
+      .filter(session => session.clockOut)
       .map(session => ({
         'Start Time': new Date(session.clockIn.timestamp).toLocaleString(),
         'End Time': new Date(session.clockOut!.timestamp).toLocaleString(),
@@ -293,28 +298,23 @@ const WorkTracker = () => {
         'End Notes': session.clockOut!.notes || ''
       }))
 
-    // Create worksheet
     const ws = XLSX.utils.json_to_sheet(exportData)
 
-    // Set column widths
     const colWidths = [
-      { wch: 20 }, // Start Time
-      { wch: 20 }, // End Time
-      { wch: 15 }, // Worked Time
-      { wch: 30 }, // Start Notes
-      { wch: 30 }  // End Notes
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 30 },
+      { wch: 30 }
     ]
     ws['!cols'] = colWidths
 
-    // Create workbook
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Work Sessions')
 
-    // Generate filename with current date
     const date = new Date().toISOString().split('T')[0]
     const filename = `work_sessions_${date}.xlsx`
 
-    // Save file
     XLSX.writeFile(wb, filename)
   }
 
@@ -352,7 +352,6 @@ const WorkTracker = () => {
             )}
           </div>
           
-          {/* Mobile menu button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
@@ -366,7 +365,6 @@ const WorkTracker = () => {
             </svg>
           </button>
 
-          {/* Desktop menu */}
           <div className="hidden md:flex gap-3">
             <button
               onClick={exportToExcel}
@@ -392,7 +390,6 @@ const WorkTracker = () => {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {isMenuOpen && (
           <div className="md:hidden mt-4 space-y-2">
             <button
@@ -542,6 +539,7 @@ const WorkTracker = () => {
                       session={session}
                       onEdit={setEditingSession}
                       onDelete={() => handleDeleteClick(session.clockIn.id)}
+                      isDeleting={deletingSessions.has(session.clockIn.id)}
                     />
                   ))}
               </div>

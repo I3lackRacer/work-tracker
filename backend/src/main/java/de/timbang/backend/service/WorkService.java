@@ -38,9 +38,14 @@ public class WorkService {
             .orElseThrow(() -> new RuntimeException("User not found"));
 
         LocalDateTime timestamp = request.timestamp() != null ? request.timestamp() : LocalDateTime.now();
+        
+        // Prevent future timestamps
+        if (timestamp.isAfter(LocalDateTime.now())) {
+            throw new RuntimeException("Cannot create entries with future timestamps");
+        }
 
         // Check if the last entry was a clock-in without a clock-out
-        List<WorkEntry> recentEntries = workEntryRepository.findByUserOrderByIdDesc(user);
+        List<WorkEntry> recentEntries = workEntryRepository.findByUserOrderByTimestampDesc(user);
         if (!recentEntries.isEmpty()) {
             WorkEntry lastEntry = recentEntries.get(0);
             if (lastEntry.getType() == EntryType.CLOCK_IN) {
@@ -67,16 +72,19 @@ public class WorkService {
             .orElseThrow(() -> new RuntimeException("User not found"));
 
         LocalDateTime timestamp = request.timestamp() != null ? request.timestamp() : LocalDateTime.now();
+        
+        // Prevent future timestamps
+        if (timestamp.isAfter(LocalDateTime.now())) {
+            throw new RuntimeException("Cannot create entries with future timestamps");
+        }
 
-        System.out.println("Clocking time: " + timestamp);
         // Check if the last entry was a clock-out or if there are no entries
-        List<WorkEntry> recentEntries = workEntryRepository.findByUserOrderByIdDesc(user);
+        List<WorkEntry> recentEntries = workEntryRepository.findByUserOrderByTimestampDesc(user);
         if (recentEntries.isEmpty()) {
             throw new RuntimeException("No work entries found. Please clock in first.");
         }
 
         WorkEntry lastEntry = recentEntries.get(0);
-        System.out.println("Last entry: " + lastEntry.getTimestamp() + " " + lastEntry.getType() + " " + lastEntry.getNotes() + " " + lastEntry.getId());
         if (lastEntry.getType() == EntryType.CLOCK_OUT) {
             throw new RuntimeException("No open work session found. Please clock in first.");
         }
