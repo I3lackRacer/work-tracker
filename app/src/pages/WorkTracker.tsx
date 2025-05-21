@@ -425,14 +425,13 @@ const WorkTracker = () => {
         onSubmit={addManualEntry}
       />
 
-      {editingSession && (
-        <EditSessionModal
-          isOpen={!!editingSession}
-          onClose={() => setEditingSession(null)}
-          onSubmit={editWorkSession}
-          session={editingSession}
-        />
-      )}
+      <EditSessionModal
+        isOpen={!!editingSession}
+        onClose={() => setEditingSession(null)}
+        onSubmit={editWorkSession}
+        onDelete={handleDeleteClick}
+        session={editingSession!}
+      />
 
       <DeleteConfirmationModal
         isOpen={showDeleteConfirmation}
