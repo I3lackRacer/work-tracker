@@ -12,6 +12,9 @@ docker pull ${DOCKER_IMAGE}:latest
 # Stop and remove existing container
 docker compose down || true
 
+# Create or update .env file with JWT secret
+echo "JWT_SECRET=${JWT_SECRET}" > .env
+
 # Start the new container
 docker compose up -d
 
