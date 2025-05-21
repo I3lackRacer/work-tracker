@@ -32,6 +32,8 @@ public class WorkService {
 
     @Autowired
     private UserRepository userRepository;
+    
+    private static final int PAGE_SIZE = 10;
 
     public WorkEntryResponse clockIn(String username, ClockEntryRequest request) {
         User user = userRepository.findByUsername(username)
@@ -265,5 +267,20 @@ public class WorkService {
         }
 
         return WorkEntryResponse.fromEntity(workEntryRepository.save(entry));
+    }
+
+    public List<WorkEntryResponse> getEntriesByPage(String username, int page) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<WorkEntry> entries = workEntryRepository.findByUserOrderByTimestampDesc(user)
+            .stream()
+            .skip((long) page * PAGE_SIZE)
+            .limit(PAGE_SIZE)
+            .collect(Collectors.toList());
+
+        return entries.stream()
+            .map(WorkEntryResponse::fromEntity)
+            .collect(Collectors.toList());
     }
 } 
