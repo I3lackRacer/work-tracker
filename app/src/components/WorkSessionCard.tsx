@@ -1,5 +1,5 @@
 import type { WorkSession } from '../types/work'
-import { formatTime, formatDuration } from '../utils/dateUtils'
+import { formatTime, formatDuration, formatDateTime, formatTimeRange } from '../utils/dateUtils'
 
 interface WorkSessionCardProps {
   session: WorkSession
@@ -9,6 +9,7 @@ interface WorkSessionCardProps {
 }
 
 const WorkSessionCard = ({ session, onEdit, onDelete, isDeleting = false }: WorkSessionCardProps) => {
+
   return (
     <div className={`bg-gray-800 rounded-lg p-3 border border-gray-700 transition-all duration-300 ${
       isDeleting ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
@@ -44,9 +45,7 @@ const WorkSessionCard = ({ session, onEdit, onDelete, isDeleting = false }: Work
         </div>
       </div>
       <div className="text-gray-300">
-        {formatTime(session.clockIn.timestamp)} - {
-          session.clockOut && formatTime(session.clockOut.timestamp)
-        }
+        {formatTimeRange(session.clockIn.timestamp, session.clockOut?.timestamp)}
       </div>
     </div>
   )
