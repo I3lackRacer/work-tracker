@@ -14,7 +14,6 @@ const API_URL = (import.meta.env.VITE_API_URL || '') + "/api/v1"
 
 const WorkTracker = () => {
   const [workSessions, setWorkSessions] = useState<WorkSession[]>([])
-  const [workSessionList, setWorkSessionList] = useState<WorkSession[]>([])
   const [isWorking, setIsWorking] = useState(false)
   const [currentSession, setCurrentSession] = useState<WorkSession | null>(null)
   const [notes, setNotes] = useState('')
@@ -73,9 +72,7 @@ const WorkTracker = () => {
           }
         })
 
-      setWorkSessions(sessions)
-      setWorkSessionList(sessions)
-      
+      setWorkSessions(sessions)      
       const lastSession = sessions[sessions.length - 1]
       if (lastSession && !lastSession.clockOut) {
         setIsWorking(true)
@@ -531,7 +528,7 @@ const WorkTracker = () => {
               <p className="text-gray-400">No work sessions yet</p>
             ) : (
               <div className="space-y-3">
-                {workSessionList
+                {workSessions
                   .filter(session => session.clockOut)
                   .reverse()
                   .slice(0, 5)
