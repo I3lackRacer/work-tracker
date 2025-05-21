@@ -39,4 +39,43 @@ export const getWeekStart = (date: Date) => {
 
 export const getWeekDays = () => {
   return ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+}
+
+export const formatDateTime = (timestamp: string) => {
+  const date = new Date(timestamp)
+  const day = date.getDate()
+  const month = date.toLocaleString('en-US', { month: 'short' })
+  const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return `${day}. ${month}. ${time}`
+}
+
+export const formatTimeRange = (startTimestamp: string, endTimestamp?: string) => {
+  const startDate = new Date(startTimestamp)
+  if (!endTimestamp) { 
+    return formatDateTime(startTimestamp)
+  }
+  
+  const endDate = new Date(endTimestamp)
+  const sameDay = startDate.getDate() === endDate.getDate() &&
+                  startDate.getMonth() === endDate.getMonth() &&
+                  startDate.getFullYear() === endDate.getFullYear()
+  
+  const startTime = startDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const endTime = endDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const day = startDate.getDate()
+  const month = startDate.toLocaleString('en-US', { month: 'short' })
+  
+  if (sameDay) {
+    return `${day}. ${month} ${startTime} - ${endTime}`
+  }
+  
+  const endDay = endDate.getDate()
+  const endMonth = endDate.toLocaleString('en-US', { month: 'short' })
+  const sameMonth = month === endMonth
+  
+  if (sameMonth) {
+    return `${day}.-${endDay}. ${month} ${startTime} - ${endTime}`
+  }
+  
+  return `${day}. ${month} ${startTime} - ${endDay}. ${endMonth} ${endTime}`
 } 

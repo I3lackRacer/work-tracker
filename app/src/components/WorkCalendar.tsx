@@ -123,9 +123,9 @@ const WorkCalendar = ({ workSessions, onAddManualEntry }: WorkCalendarProps) => 
           slotMaxTime="22:00:00"
           allDaySlot={false}
           nowIndicator={true}
-          firstDay={1} // Start week on Monday
-          locale="de" // Use German locale for date formatting
-          dayHeaderFormat={{ weekday: 'short' }}
+          firstDay={1}
+          locale="de"
+          dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
           selectable={true}
           selectMirror={true}
           select={handleDateSelect}

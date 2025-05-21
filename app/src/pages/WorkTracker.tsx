@@ -6,7 +6,7 @@ import EditSessionModal from '../components/modals/EditSessionModal'
 import DeleteConfirmationModal from '../components/modals/DeleteConfirmationModal'
 import WorkSessionCard from '../components/WorkSessionCard'
 import { formatTime, formatDuration, formatDateTimeForInput } from '../utils/dateUtils'
-import type { WorkSession } from '../types/work'
+import type { WorkEntry, WorkSession } from '../types/work'
 import * as XLSX from 'xlsx'
 import '../styles/calendar.css'
 
@@ -56,13 +56,13 @@ const WorkTracker = () => {
         throw new Error('Failed to fetch work entries')
       }
 
-      const entries = await response.json()
+      const entries = await response.json() as WorkEntry[]
 
       const sessions: WorkSession[] = []
       let currentSession: WorkSession | null = null
 
-      entries.sort((a: { id: number }, b: { id: number }) => a.id - b.id)
-        .forEach((entry: { id: number; type: 'CLOCK_IN' | 'CLOCK_OUT'; timestamp: string; notes?: string }) => {
+      entries.sort((a: WorkEntry, b: WorkEntry) => a.timestamp.localeCompare(b.timestamp))
+        .forEach((entry: WorkEntry) => {
           if (entry.type === 'CLOCK_IN') {
             currentSession = { clockIn: entry }
             sessions.push(currentSession)
@@ -72,8 +72,7 @@ const WorkTracker = () => {
           }
         })
 
-      setWorkSessions(sessions)
-
+      setWorkSessions(sessions)      
       const lastSession = sessions[sessions.length - 1]
       if (lastSession && !lastSession.clockOut) {
         setIsWorking(true)
@@ -426,14 +425,13 @@ const WorkTracker = () => {
         onSubmit={addManualEntry}
       />
 
-      {editingSession && (
-        <EditSessionModal
-          isOpen={!!editingSession}
-          onClose={() => setEditingSession(null)}
-          onSubmit={editWorkSession}
-          session={editingSession}
-        />
-      )}
+      <EditSessionModal
+        isOpen={!!editingSession}
+        onClose={() => setEditingSession(null)}
+        onSubmit={editWorkSession}
+        onDelete={handleDeleteClick}
+        session={editingSession!}
+      />
 
       <DeleteConfirmationModal
         isOpen={showDeleteConfirmation}

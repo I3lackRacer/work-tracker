@@ -5,10 +5,11 @@ interface EditSessionModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (clockInId: number, clockOutId: number | undefined, clockInTime: string, clockOutTime: string, clockInNotes: string, clockOutNotes: string) => Promise<void>
+  onDelete: (clockInId: number) => void
   session: WorkSession
 }
 
-const EditSessionModal = ({ isOpen, onClose, onSubmit, session }: EditSessionModalProps) => {
+const EditSessionModal = ({ isOpen, onClose, onSubmit, onDelete, session }: EditSessionModalProps) => {
   const [clockInTime, setClockInTime] = useState('')
   const [clockOutTime, setClockOutTime] = useState('')
   const [clockInNotes, setClockInNotes] = useState('')
@@ -112,11 +113,21 @@ const EditSessionModal = ({ isOpen, onClose, onSubmit, session }: EditSessionMod
           {error && (
             <div className="text-red-400 text-sm">{error}</div>
           )}
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              type="button"
+              onClick={() => {
+                onDelete(session.clockIn.id)
+                onClose()
+              }}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200"
+            >
+              Delete
+            </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200"
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors duration-200"
             >
               Cancel
             </button>

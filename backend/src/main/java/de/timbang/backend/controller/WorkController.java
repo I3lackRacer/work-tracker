@@ -71,6 +71,18 @@ public class WorkController {
         }
     }
 
+    @GetMapping("/entries/{page}")
+    public ResponseEntity<?> getEntries(
+            Authentication auth,
+            @PathVariable int page) {
+        try {
+            List<WorkEntryResponse> entries = workService.getEntriesByPage(auth.getName(), page);
+            return ResponseEntity.ok(entries);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/config")
     public ResponseEntity<?> getConfig(Authentication auth) {
         try {
