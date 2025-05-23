@@ -28,6 +28,8 @@ const WorkTracker = () => {
   const { logout, username } = useAuth()
   const authenticatedFetch = useAuthenticatedFetch()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const sessionsPerPage = 5
 
   useEffect(() => {
     if (username) {
@@ -530,7 +532,7 @@ const WorkTracker = () => {
                 {workSessions
                   .filter(session => session.clockOut)
                   .reverse()
-                  .slice(0, 5)
+                  .slice((currentPage - 1) * sessionsPerPage, currentPage * sessionsPerPage)
                   .map(session => (
                     <WorkSessionCard
                       key={session.clockIn.id}
@@ -540,6 +542,27 @@ const WorkTracker = () => {
                       isDeleting={deletingSessions.has(session.clockIn.id)}
                     />
                   ))}
+                {workSessions.filter(session => session.clockOut).length > sessionsPerPage && (
+                  <div className="flex justify-between items-center mt-4">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-gray-400">
+                      Page {currentPage} of {Math.ceil(workSessions.filter(session => session.clockOut).length / sessionsPerPage)}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(workSessions.filter(session => session.clockOut).length / sessionsPerPage), prev + 1))}
+                      disabled={currentPage >= Math.ceil(workSessions.filter(session => session.clockOut).length / sessionsPerPage)}
+                      className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
