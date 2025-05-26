@@ -4,10 +4,12 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { WorkSession } from '../types/work'
+import { formatTime } from '../utils/dateUtils'
 
 interface WorkCalendarProps {
   workSessions: WorkSession[]
   onAddManualEntry: (startTime: string, endTime: string, notes: string) => Promise<void>
+  onEdit: (session: WorkSession) => void
 }
 
 interface WorkStats {
@@ -17,7 +19,7 @@ interface WorkStats {
   total: number
 }
 
-const WorkCalendar = ({ workSessions, onAddManualEntry }: WorkCalendarProps) => {
+const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit }: WorkCalendarProps) => {
   const [stats, setStats] = useState<WorkStats>({
     daily: 0,
     weekly: 0,
@@ -66,12 +68,27 @@ const WorkCalendar = ({ workSessions, onAddManualEntry }: WorkCalendarProps) => 
     })
   }
 
+  const calculateDurationHours = (start: string, end: string): number => {
+    const startTime = new Date(start).getTime()
+    const endTime = new Date(end).getTime()
+    return Math.round((endTime - startTime) / (1000 * 60 * 60) * 10) / 10
+  }
+
   const calendarEvents = workSessions.map(session => ({
+    id: session.clockIn.id.toString(),
     title: session.clockIn.notes || 'Work Session',
     start: session.clockIn.timestamp,
     end: session.clockOut?.timestamp || new Date().toISOString(),
     backgroundColor: session.clockOut ? '#3B82F6' : '#DC2626',
-    borderColor: session.clockOut ? '#2563EB' : '#DC2626'
+    borderColor: session.clockOut ? '#2563EB' : '#DC2626',
+    extendedProps: {
+      timeRange: session.clockOut ? 
+        `${formatTime(session.clockIn.timestamp)} - ${formatTime(session.clockOut.timestamp)}` : 
+        formatTime(session.clockIn.timestamp),
+      duration: session.clockOut ? 
+        calculateDurationHours(session.clockIn.timestamp, session.clockOut.timestamp) : 
+        null
+    }
   }))
 
   const handleDateSelect = async (selectInfo: any) => {
@@ -83,6 +100,30 @@ const WorkCalendar = ({ workSessions, onAddManualEntry }: WorkCalendarProps) => 
       selectInfo.view.calendar.unselect()
     } catch (error) {
       console.error('Failed to add manual entry:', error)
+    }
+  }
+
+  const handleEventClick = (clickInfo: any) => {
+    const sessionId = parseInt(clickInfo.event.id)
+    const session = workSessions.find(s => s.clockIn.id === sessionId)
+    if (session) {
+      onEdit(session)
+    }
+  }
+
+  const renderEventContent = (eventInfo: any) => {
+    const isMonthView = eventInfo.view.type === 'dayGridMonth'
+    
+    if (isMonthView) {
+      const duration = eventInfo.event.extendedProps.duration
+      if (duration === null) return { html: eventInfo.event.extendedProps.timeRange }
+      return {
+        html: `${eventInfo.event.extendedProps.timeRange} • ${duration}h`
+      }
+    }
+    
+    return {
+      html: eventInfo.event.title
     }
   }
 
@@ -116,6 +157,8 @@ const WorkCalendar = ({ workSessions, onAddManualEntry }: WorkCalendarProps) => 
             right: 'dayGridMonth,timeGridWeek,timeGridDay'
           }}
           events={calendarEvents}
+          eventClick={handleEventClick}
+          eventContent={renderEventContent}
           height="100%"
           expandRows={true}
           stickyHeaderDates={true}

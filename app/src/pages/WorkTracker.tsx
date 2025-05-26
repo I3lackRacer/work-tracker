@@ -572,6 +572,7 @@ const WorkTracker = () => {
           <WorkCalendar 
             workSessions={workSessions} 
             onAddManualEntry={addManualEntry}
+            onEdit={setEditingSession}
           />
         </div>
       </div>
