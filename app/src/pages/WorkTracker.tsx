@@ -33,27 +33,9 @@ const WorkTracker = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const sessionsPerPage = 5
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
-  const [workSettings, setWorkSettings] = useState<WorkSettings>(() => {
+  const [workSettings, setWorkSettings] = useState<WorkSettings | undefined>(() => {
     const savedSettings = localStorage.getItem('workSettings')
-    return savedSettings ? JSON.parse(savedSettings) : {
-      workingHours: {
-        start: '09:00',
-        end: '17:00'
-      },
-      breakTime: {
-        duration: 15,
-        frequency: 60
-      },
-      notifications: {
-        enabled: true,
-        sound: true,
-        desktop: true
-      },
-      display: {
-        theme: 'system',
-        timeFormat: '24h'
-      }
-    }
+    return savedSettings ? JSON.parse(savedSettings) : undefined
   })
 
   useEffect(() => {
@@ -74,6 +56,21 @@ const WorkTracker = () => {
       setShowDeleteConfirmation(false)
     }
   }, [])
+
+  const fetchWorkSettings = async () => {
+    const response = await authenticatedFetch(`${API_URL}/work/config`)
+    if (!response.ok) {
+      setWorkSettings({
+        expectedWeeklyHours: 40,
+        expectedMonthlyHours: 160,
+        trackLunchBreak: true,
+        defaultLunchBreakMinutes: 30,
+        workDays: '1,2,3,4,5'
+      })
+    }
+    const data = await response.json()
+    setWorkSettings(data)
+  }
 
   const fetchWorkEntries = async () => {
     try {
@@ -99,7 +96,7 @@ const WorkTracker = () => {
           }
         })
 
-      setWorkSessions(sessions)      
+      setWorkSessions(sessions)
       const lastSession = sessions[sessions.length - 1]
       if (lastSession && !lastSession.clockOut) {
         setIsWorking(true)
@@ -112,6 +109,7 @@ const WorkTracker = () => {
 
   useEffect(() => {
     fetchWorkEntries()
+    fetchWorkSettings()
   }, [])
 
   const clockIn = async () => {
@@ -283,7 +281,7 @@ const WorkTracker = () => {
     try {
       const startDate = new Date(startTime)
       const endDate = new Date(endTime)
-      
+
       const startTimeISO = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000).toISOString()
       const endTimeISO = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString()
 
@@ -367,9 +365,26 @@ const WorkTracker = () => {
     setShowDeleteConfirmation(false)
   }
 
-  const handleSaveSettings = (settings: WorkSettings) => {
-    setWorkSettings(settings)
-    localStorage.setItem('workSettings', JSON.stringify(settings))
+  const handleSaveSettings = async (settings: WorkSettings) => {
+    try {
+      const response = await authenticatedFetch(`${API_URL}/work/config`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(settings)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save settings')
+      }
+
+      setWorkSettings(settings)
+      localStorage.setItem('workSettings', JSON.stringify(settings))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save settings')
+    }
   }
 
   return (
@@ -382,7 +397,7 @@ const WorkTracker = () => {
               <p className="text-gray-400 text-sm">Welcome back, {username}!</p>
             )}
           </div>
-          
+
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden p-2 rounded-lg hover:bg-gray-800 transition-colors duration-200"
@@ -627,10 +642,11 @@ const WorkTracker = () => {
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden">
-          <WorkCalendar 
-            workSessions={workSessions} 
+          <WorkCalendar
+            workSessions={workSessions}
             onAddManualEntry={addManualEntry}
             onEdit={setEditingSession}
+            workSettings={workSettings}
           />
         </div>
       </div>

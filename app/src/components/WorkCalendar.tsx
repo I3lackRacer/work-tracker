@@ -4,12 +4,14 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { WorkSession } from '../types/work'
+import type { WorkSettings } from './modals/SettingsModal'
 import { formatTime } from '../utils/dateUtils'
 
 interface WorkCalendarProps {
   workSessions: WorkSession[]
   onAddManualEntry: (startTime: string, endTime: string, notes: string) => Promise<void>
   onEdit: (session: WorkSession) => void
+  workSettings: WorkSettings | undefined  
 }
 
 interface WorkStats {
@@ -19,7 +21,7 @@ interface WorkStats {
   total: number
 }
 
-const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit }: WorkCalendarProps) => {
+const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: WorkCalendarProps) => {
   const [stats, setStats] = useState<WorkStats>({
     daily: 0,
     weekly: 0,
@@ -137,10 +139,32 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit }: WorkCalendarPr
         <div className="bg-gray-800 p-3 rounded-lg">
           <h4 className="text-gray-400 text-sm">This Week</h4>
           <p className="text-xl font-semibold">{stats.weekly}h</p>
+          <div className="mt-2">
+            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-600 transition-all duration-300"
+                style={{ width: `${Math.min((stats.weekly / (workSettings?.expectedWeeklyHours || 0)) * 100, 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {Math.round((stats.weekly / (workSettings?.expectedWeeklyHours || 0)) * 100)}% of {workSettings?.expectedWeeklyHours || 0}h
+            </p>
+          </div>
         </div>
         <div className="bg-gray-800 p-3 rounded-lg">
           <h4 className="text-gray-400 text-sm">This Month</h4>
           <p className="text-xl font-semibold">{stats.monthly}h</p>
+          <div className="mt-2">
+            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-600 transition-all duration-300"
+                style={{ width: `${Math.min((stats.monthly / (workSettings?.expectedMonthlyHours || 0)) * 100, 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {Math.round((stats.monthly / (workSettings?.expectedMonthlyHours || 0)) * 100)}% of {workSettings?.expectedMonthlyHours || 0}h
+            </p>
+          </div>
         </div>
         <div className="bg-gray-800 p-3 rounded-lg">
           <h4 className="text-gray-400 text-sm">Total</h4>
@@ -174,7 +198,7 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit }: WorkCalendarPr
           select={handleDateSelect}
           selectConstraint={{
             startTime: '06:00',
-            endTime: '22:00',
+            endTime: '21:00',
           }}
         />
       </div>

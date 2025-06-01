@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -95,9 +94,9 @@ public class WorkController {
 
     @PutMapping("/config")
     public ResponseEntity<WorkConfigResponse> updateConfig(
-            @AuthenticationPrincipal String username,
+            Authentication auth,
             @RequestBody WorkConfigRequest request) {
-        return ResponseEntity.ok(workService.updateConfig(username, request));
+        return ResponseEntity.ok(workService.updateConfig(auth.getName(), request));
     }
 
     @DeleteMapping("/entries/{clockInId}")
