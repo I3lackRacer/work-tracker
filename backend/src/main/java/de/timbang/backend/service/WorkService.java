@@ -132,7 +132,7 @@ public class WorkService {
                 WorkConfig newConfig = new WorkConfig();
                 newConfig.setUser(user);
                 newConfig.setExpectedWeeklyHours(40);
-                newConfig.setExpectedDailyHours(8);
+                newConfig.setExpectedMonthlyHours(160);
                 newConfig.setTrackLunchBreak(true);
                 newConfig.setDefaultLunchBreakMinutes(60);
                 newConfig.setWorkDays("1,2,3,4,5"); // Monday to Friday
@@ -154,7 +154,7 @@ public class WorkService {
             });
 
         config.setExpectedWeeklyHours(request.expectedWeeklyHours());
-        config.setExpectedDailyHours(request.expectedDailyHours());
+        config.setExpectedMonthlyHours(request.expectedMonthlyHours());
         config.setTrackLunchBreak(request.trackLunchBreak());
         config.setDefaultLunchBreakMinutes(request.defaultLunchBreakMinutes());
         config.setWorkDays(request.workDays());

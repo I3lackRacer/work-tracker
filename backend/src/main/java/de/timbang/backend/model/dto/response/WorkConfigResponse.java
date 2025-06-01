@@ -6,7 +6,7 @@ public record WorkConfigResponse(
     Long id,
     String username,
     Integer expectedWeeklyHours,
-    Integer expectedDailyHours,
+    Integer expectedMonthlyHours,
     Boolean trackLunchBreak,
     Integer defaultLunchBreakMinutes,
     String workDays
@@ -16,7 +16,7 @@ public record WorkConfigResponse(
             config.getId(),
             config.getUser().getUsername(),
             config.getExpectedWeeklyHours(),
-            config.getExpectedDailyHours(),
+            config.getExpectedMonthlyHours(),
             config.getTrackLunchBreak(),
             config.getDefaultLunchBreakMinutes(),
             config.getWorkDays()

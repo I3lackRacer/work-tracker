@@ -4,9 +4,11 @@ import WorkCalendar from '../components/WorkCalendar'
 import ManualEntryModal from '../components/modals/ManualEntryModal'
 import EditSessionModal from '../components/modals/EditSessionModal'
 import DeleteConfirmationModal from '../components/modals/DeleteConfirmationModal'
+import SettingsModal from '../components/modals/SettingsModal'
 import WorkSessionCard from '../components/WorkSessionCard'
 import { formatTime, formatDuration, formatDateTimeForInput } from '../utils/dateUtils'
 import type { WorkEntry, WorkSession } from '../types/work'
+import type { WorkSettings } from '../components/modals/SettingsModal'
 import * as XLSX from 'xlsx'
 import '../styles/calendar.css'
 
@@ -30,6 +32,29 @@ const WorkTracker = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const sessionsPerPage = 5
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [workSettings, setWorkSettings] = useState<WorkSettings>(() => {
+    const savedSettings = localStorage.getItem('workSettings')
+    return savedSettings ? JSON.parse(savedSettings) : {
+      workingHours: {
+        start: '09:00',
+        end: '17:00'
+      },
+      breakTime: {
+        duration: 15,
+        frequency: 60
+      },
+      notifications: {
+        enabled: true,
+        sound: true,
+        desktop: true
+      },
+      display: {
+        theme: 'system',
+        timeFormat: '24h'
+      }
+    }
+  })
 
   useEffect(() => {
     if (username) {
@@ -342,6 +367,11 @@ const WorkTracker = () => {
     setShowDeleteConfirmation(false)
   }
 
+  const handleSaveSettings = (settings: WorkSettings) => {
+    setWorkSettings(settings)
+    localStorage.setItem('workSettings', JSON.stringify(settings))
+  }
+
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
       <div className="px-4 py-2 border-b border-gray-800 shrink-0">
@@ -383,6 +413,15 @@ const WorkTracker = () => {
               Add Manual Entry
             </button>
             <button
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200 flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+              </svg>
+              Settings
+            </button>
+            <button
               onClick={logout}
               className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors duration-200"
             >
@@ -410,6 +449,18 @@ const WorkTracker = () => {
               className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
             >
               Add Manual Entry
+            </button>
+            <button
+              onClick={() => {
+                setIsSettingsModalOpen(true)
+                setIsMenuOpen(false)
+              }}
+              className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+              </svg>
+              Settings
             </button>
             <button
               onClick={logout}
@@ -443,6 +494,13 @@ const WorkTracker = () => {
         }}
         onConfirm={handleDeleteConfirm}
         onNeverAskAgain={handleNeverAskAgain}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSave={handleSaveSettings}
+        initialSettings={workSettings}
       />
 
       {error && (
