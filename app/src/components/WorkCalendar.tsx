@@ -70,6 +70,61 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
     })
   }
 
+  const calculateProgressStatus = (currentHours: number, targetHours: number, workDays: string, period: 'week' | 'month'): { status: 'on-track' | 'behind' | 'ahead', message: string } => {
+    if (!workSettings) return { status: 'on-track', message: 'No settings available' }
+
+    const workDaysArray = workDays.split(',').map(Number)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekStart = new Date(today)
+    weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    let elapsedWorkDays = 0
+    let totalWorkDays = 0
+
+    if (period === 'week') {
+      // Count work days from week start to today
+      for (let d = new Date(weekStart); d <= today; d.setDate(d.getDate() + 1)) {
+        if (workDaysArray.includes(d.getDay() || 7)) {
+          elapsedWorkDays++
+        }
+      }
+      // Count total work days in the week
+      for (let d = new Date(weekStart); d < new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000); d.setDate(d.getDate() + 1)) {
+        if (workDaysArray.includes(d.getDay() || 7)) {
+          totalWorkDays++
+        }
+      }
+    } else {
+      // Count work days from month start to today
+      for (let d = new Date(monthStart); d <= today; d.setDate(d.getDate() + 1)) {
+        if (workDaysArray.includes(d.getDay() || 7)) {
+          elapsedWorkDays++
+        }
+      }
+      // Count total work days in the month
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      for (let d = new Date(monthStart); d <= lastDayOfMonth; d.setDate(d.getDate() + 1)) {
+        if (workDaysArray.includes(d.getDay() || 7)) {
+          totalWorkDays++
+        }
+      }
+    }
+
+    const expectedHours = (targetHours / totalWorkDays) * elapsedWorkDays
+    const progress = currentHours / expectedHours
+    const hoursDifference = Math.round((currentHours - expectedHours) * 10) / 10
+
+    if (progress >= 1.1) {
+      return { status: 'ahead', message: `${Math.abs(hoursDifference)}h ahead (${Math.round((progress - 1) * 100)}%)` }
+    } else if (progress <= 0.9) {
+      return { status: 'behind', message: `${Math.abs(hoursDifference)}h behind (${Math.round((1 - progress) * 100)}%)` }
+    } else {
+      return { status: 'on-track', message: 'On track' }
+    }
+  }
+
   const calculateDurationHours = (start: string, end: string): number => {
     const startTime = new Date(start).getTime()
     const endTime = new Date(end).getTime()
@@ -142,12 +197,23 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
           <div className="mt-2">
             <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-blue-600 transition-all duration-300"
+                className={`h-full transition-all duration-300 ${
+                  workSettings ? (calculateProgressStatus(stats.weekly, workSettings.expectedWeeklyHours, workSettings.workDays, 'week').status === 'ahead' ? 'bg-green-600' :
+                  calculateProgressStatus(stats.weekly, workSettings.expectedWeeklyHours, workSettings.workDays, 'week').status === 'behind' ? 'bg-red-600' : 'bg-blue-600') : 'bg-blue-600'
+                }`}
                 style={{ width: `${Math.min((stats.weekly / (workSettings?.expectedWeeklyHours || 0)) * 100, 100)}%` }}
               />
             </div>
             <p className="text-xs text-gray-400 mt-1">
               {Math.round((stats.weekly / (workSettings?.expectedWeeklyHours || 0)) * 100)}% of {workSettings?.expectedWeeklyHours || 0}h
+              {workSettings && (
+                <span className={`ml-2 ${
+                  calculateProgressStatus(stats.weekly, workSettings.expectedWeeklyHours, workSettings.workDays, 'week').status === 'ahead' ? 'text-green-400' :
+                  calculateProgressStatus(stats.weekly, workSettings.expectedWeeklyHours, workSettings.workDays, 'week').status === 'behind' ? 'text-red-400' : 'text-blue-400'
+                }`}>
+                  ({calculateProgressStatus(stats.weekly, workSettings.expectedWeeklyHours, workSettings.workDays, 'week').message})
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -157,12 +223,23 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
           <div className="mt-2">
             <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-blue-600 transition-all duration-300"
+                className={`h-full transition-all duration-300 ${
+                  workSettings ? (calculateProgressStatus(stats.monthly, workSettings.expectedMonthlyHours, workSettings.workDays, 'month').status === 'ahead' ? 'bg-green-600' :
+                  calculateProgressStatus(stats.monthly, workSettings.expectedMonthlyHours, workSettings.workDays, 'month').status === 'behind' ? 'bg-red-600' : 'bg-blue-600') : 'bg-blue-600'
+                }`}
                 style={{ width: `${Math.min((stats.monthly / (workSettings?.expectedMonthlyHours || 0)) * 100, 100)}%` }}
               />
             </div>
             <p className="text-xs text-gray-400 mt-1">
               {Math.round((stats.monthly / (workSettings?.expectedMonthlyHours || 0)) * 100)}% of {workSettings?.expectedMonthlyHours || 0}h
+              {workSettings && (
+                <span className={`ml-2 ${
+                  calculateProgressStatus(stats.monthly, workSettings.expectedMonthlyHours, workSettings.workDays, 'month').status === 'ahead' ? 'text-green-400' :
+                  calculateProgressStatus(stats.monthly, workSettings.expectedMonthlyHours, workSettings.workDays, 'month').status === 'behind' ? 'text-red-400' : 'text-blue-400'
+                }`}>
+                  ({calculateProgressStatus(stats.monthly, workSettings.expectedMonthlyHours, workSettings.workDays, 'month').message})
+                </span>
+              )}
             </p>
           </div>
         </div>
