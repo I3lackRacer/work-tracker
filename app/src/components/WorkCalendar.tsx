@@ -193,7 +193,7 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
         </div>
         <div className="bg-gray-800 p-3 rounded-lg">
           <h4 className="text-gray-400 text-sm">This Week</h4>
-          <p className="text-xl font-semibold">{stats.weekly}h</p>
+          <p className="text-xl font-semibold">{stats.weekly}h / {workSettings && (workSettings?.expectedWeeklyHours || 0) }h</p>
           <div className="mt-2">
             <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
               <div 
@@ -219,7 +219,7 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
         </div>
         <div className="bg-gray-800 p-3 rounded-lg">
           <h4 className="text-gray-400 text-sm">This Month</h4>
-          <p className="text-xl font-semibold">{stats.monthly}h</p>
+          <p className="text-xl font-semibold">{stats.monthly}h / {workSettings && (workSettings?.expectedMonthlyHours || 0) }h</p>
           <div className="mt-2">
             <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
               <div 

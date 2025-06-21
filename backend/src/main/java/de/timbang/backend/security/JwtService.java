@@ -33,6 +33,11 @@ public class JwtService {
         return createToken(claims, username);
     }
 
+    public String refreshToken(String token) {
+        final String username = extractUsername(token);
+        return generateToken(username);
+    }
+
     private String createToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
                 .setClaims(claims)

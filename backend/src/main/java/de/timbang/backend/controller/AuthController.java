@@ -64,4 +64,27 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("valid", false, "error", "Invalid or expired token"));
     }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(HttpServletRequest request) {
+        try {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Authorization header required"));
+            }
+            
+            String token = authHeader.substring(7);
+            String newToken = authService.refreshToken(token);
+            String username = authService.extractUsernameFromToken(newToken);
+            
+            return ResponseEntity.ok(Map.of(
+                "token", newToken,
+                "type", "Bearer",
+                "username", username
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
 }

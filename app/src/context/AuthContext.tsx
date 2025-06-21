@@ -49,6 +49,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  const refreshToken = async (token: string) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const newToken = data.token
+        localStorage.setItem('token', newToken)
+        setToken(newToken)
+        return newToken
+      }
+      return null
+    } catch (err) {
+      return null
+    }
+  }
+
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem('token')
@@ -71,6 +94,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     initializeAuth()
   }, [])
+
+  // Periodic token refresh - refresh every 7 days to keep users logged in
+  useEffect(() => {
+    if (!token) return
+
+    const refreshInterval = setInterval(async () => {
+      try {
+        const newToken = await refreshToken(token)
+        if (newToken) {
+          console.log('Token refreshed automatically')
+        }
+      } catch (error) {
+        console.log('Auto-refresh failed, user will need to login on next action')
+      }
+    }, 7 * 24 * 60 * 60 * 1000) // 7 days
+
+    return () => clearInterval(refreshInterval)
+  }, [token])
 
   const login = async (username: string, password: string) => {
     try {
@@ -151,22 +192,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   )
 }
 
-  export const useAuthenticatedFetch = () => {
-  const { token } = useAuth()
+export const useAuthenticatedFetch = () => {
+  const { token, logout } = useAuth()
 
   return async (url: string, options: RequestInit = {}) => {
-    const headers = {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
+    const makeRequest = async (authToken: string) => {
+      const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      }
+
+      return fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers,
+      })
     }
 
-    return fetch(url, {
-      ...options,
-      credentials: 'include',
-      headers,
-    })
+    // First attempt with current token
+    let response = await makeRequest(token!)
+    
+    // If token is expired (401), try to refresh it
+    if (response.status === 401 && token) {
+      try {
+        const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+          credentials: 'include'
+        })
+        
+        if (refreshResponse.ok) {
+          const data = await refreshResponse.json()
+          const newToken = data.token
+          localStorage.setItem('token', newToken)
+          
+          // Retry the original request with the new token
+          response = await makeRequest(newToken)
+        } else {
+          // Refresh failed, user needs to login again
+          logout()
+          throw new Error('Session expired. Please login again.')
+        }
+      } catch (error) {
+        logout()
+        throw new Error('Session expired. Please login again.')
+      }
+    }
+    
+    return response
   }
 }
 

@@ -61,4 +61,15 @@ public class AuthService {
     public String extractUsernameFromToken(String token) {
         return jwtService.extractUsername(token);
     }
+
+    public String refreshToken(String token) {
+        // Validate the current token
+        String username = jwtService.extractUsername(token);
+        if (!jwtService.isTokenValid(token, username)) {
+            throw new RuntimeException("Invalid token");
+        }
+        
+        // Generate a new token with extended expiration
+        return jwtService.refreshToken(token);
+    }
 }
