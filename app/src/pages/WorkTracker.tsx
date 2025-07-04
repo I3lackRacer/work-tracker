@@ -11,6 +11,7 @@ import type { WorkEntry, WorkSession } from '../types/work'
 import type { WorkSettings } from '../components/modals/SettingsModal'
 import * as XLSX from 'xlsx'
 import '../styles/calendar.css'
+import SummaryModal from '../components/modals/SummaryModal'
 
 const API_URL = (import.meta.env.VITE_API_URL || '') + "/api/v1"
 
@@ -37,6 +38,41 @@ const WorkTracker = () => {
     const savedSettings = localStorage.getItem('workSettings')
     return savedSettings ? JSON.parse(savedSettings) : undefined
   })
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false)
+
+  // Calculate stats
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const weekStart = new Date(today)
+  weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1)
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  const completedSessions = workSessions.filter(session => session.clockOut)
+  const calculateHours = (session: WorkSession): number => {
+    if (!session.clockOut) return 0
+    return (new Date(session.clockOut.timestamp).getTime() - new Date(session.clockIn.timestamp).getTime()) / (1000 * 60 * 60)
+  }
+
+  const stats = {
+    daily: Math.round(completedSessions.filter(session => new Date(session.clockIn.timestamp) >= today).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
+    weekly: Math.round(completedSessions.filter(session => new Date(session.clockIn.timestamp) >= weekStart).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
+    monthly: Math.round(completedSessions.filter(session => new Date(session.clockIn.timestamp) >= monthStart).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
+    total: Math.round(completedSessions.reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10
+  }
+
+  // Calculate progress status
+  const calculateProgressStatus = (
+    currentHours: number,
+    targetHours: number,
+    workDays: string,
+    period: 'week' | 'month'
+  ): { status: 'on-track' | 'ahead' | 'behind'; message: string } => {
+    if (!targetHours) return { status: 'on-track', message: '' }
+    const percent = currentHours / targetHours
+    if (percent > 1.05) return { status: 'ahead', message: 'ahead of target' }
+    if (percent < 0.95) return { status: 'behind', message: 'behind target' }
+    return { status: 'on-track', message: 'on track' }
+  }
 
   useEffect(() => {
     if (username) {
@@ -518,6 +554,14 @@ const WorkTracker = () => {
         initialSettings={workSettings}
       />
 
+      <SummaryModal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        stats={stats}
+        workSettings={workSettings}
+        calculateProgressStatus={calculateProgressStatus}
+      />
+
       {error && (
         <div className="mx-4 mt-2 bg-red-900/50 border border-red-500 text-red-200 px-4 py-2 rounded-lg shrink-0">
           {error}
@@ -650,6 +694,12 @@ const WorkTracker = () => {
           />
         </div>
       </div>
+      <button
+        className="fixed bottom-4 right-4 z-50 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg md:hidden"
+        onClick={() => setIsSummaryModalOpen(true)}
+      >
+        Show Summary
+      </button>
     </div>
   )
 }
