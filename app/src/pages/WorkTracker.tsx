@@ -12,6 +12,7 @@ import type { WorkSettings } from '../components/modals/SettingsModal'
 import * as XLSX from 'xlsx'
 import '../styles/calendar.css'
 import SummaryModal from '../components/modals/SummaryModal'
+import MonthlySummaryModal from '../components/modals/MonthlySummaryModal'
 
 const API_URL = (import.meta.env.VITE_API_URL || '') + "/api/v1"
 
@@ -39,6 +40,7 @@ const WorkTracker = () => {
     return savedSettings ? JSON.parse(savedSettings) : undefined
   })
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false)
+  const [isMonthlySummaryModalOpen, setIsMonthlySummaryModalOpen] = useState(false)
 
   // Calculate stats
   const now = new Date()
@@ -449,6 +451,15 @@ const WorkTracker = () => {
 
           <div className="hidden md:flex gap-3">
             <button
+              onClick={() => setIsMonthlySummaryModalOpen(true)}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors duration-200 flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+              Monthly Summary
+            </button>
+            <button
               onClick={exportToExcel}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 flex items-center gap-2"
             >
@@ -483,6 +494,18 @@ const WorkTracker = () => {
 
         {isMenuOpen && (
           <div className="md:hidden mt-4 space-y-2">
+            <button
+              onClick={() => {
+                setIsMonthlySummaryModalOpen(true)
+                setIsMenuOpen(false)
+              }}
+              className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+              Monthly Summary
+            </button>
             <button
               onClick={exportToExcel}
               className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
@@ -560,6 +583,13 @@ const WorkTracker = () => {
         stats={stats}
         workSettings={workSettings}
         calculateProgressStatus={calculateProgressStatus}
+      />
+
+      <MonthlySummaryModal
+        isOpen={isMonthlySummaryModalOpen}
+        onClose={() => setIsMonthlySummaryModalOpen(false)}
+        workSessions={workSessions}
+        workSettings={workSettings}
       />
 
       {error && (
