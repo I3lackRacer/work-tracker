@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import de.timbang.backend.model.WorkSession;
+import de.timbang.backend.model.dto.response.WorkSessionResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +25,6 @@ import de.timbang.backend.model.dto.request.EditWorkEntryRequest;
 import de.timbang.backend.model.dto.request.ManualWorkEntryRequest;
 import de.timbang.backend.model.dto.request.WorkConfigRequest;
 import de.timbang.backend.model.dto.response.WorkConfigResponse;
-import de.timbang.backend.model.dto.response.WorkEntryResponse;
 import de.timbang.backend.service.WorkService;
 
 @RestController
@@ -38,19 +39,20 @@ public class WorkController {
             Authentication auth,
             @RequestBody(required = false) ClockEntryRequest request) {
         try {
-            WorkEntryResponse entry = workService.clockIn(auth.getName(), request);
+            WorkSessionResponse entry = workService.clockIn(auth.getName(), request);
             return ResponseEntity.ok(entry);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    @PostMapping("/clock-out")
+    @PostMapping("/clock-out/{clockInId}")
     public ResponseEntity<?> clockOut(
             Authentication auth,
+            @PathVariable Long clockInId,
             @RequestBody(required = false) ClockEntryRequest request) {
         try {
-            WorkEntryResponse entry = workService.clockOut(auth.getName(), request);
+            WorkSessionResponse entry = workService.clockOut(auth.getName(), clockInId, request);
             return ResponseEntity.ok(entry);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -63,7 +65,7 @@ public class WorkController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
         try {
-            List<WorkEntryResponse> entries = workService.getEntries(auth.getName(), start, end);
+            List<WorkSessionResponse> entries = workService.getEntries(auth.getName(), start, end);
             return ResponseEntity.ok(entries);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -75,7 +77,7 @@ public class WorkController {
             Authentication auth,
             @PathVariable int page) {
         try {
-            List<WorkEntryResponse> entries = workService.getEntriesByPage(auth.getName(), page);
+            List<WorkSessionResponse> entries = workService.getEntriesByPage(auth.getName(), page);
             return ResponseEntity.ok(entries);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -99,24 +101,12 @@ public class WorkController {
         return ResponseEntity.ok(workService.updateConfig(auth.getName(), request));
     }
 
-    @DeleteMapping("/entries/{clockInId}")
+    @DeleteMapping("/entries/{sessionId}")
     public ResponseEntity<Void> deleteWorkEntryPair(
             Authentication auth,
-            @PathVariable Long clockInId) {
-        workService.deleteWorkEntryPair(auth.getName(), clockInId);
+            @PathVariable Long sessionId) {
+        workService.deleteWorkEntryPair(auth.getName(), sessionId);
         return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/manual-entry")
-    public ResponseEntity<?> addManualWorkEntry(
-            Authentication auth,
-            @RequestBody ManualWorkEntryRequest request) {
-        try {
-            WorkEntryResponse entry = workService.addManualWorkEntry(auth.getName(), request);
-            return ResponseEntity.ok(entry);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
     }
 
     @PutMapping("/entries/{entryId}")
@@ -125,7 +115,7 @@ public class WorkController {
             @PathVariable Long entryId,
             @RequestBody EditWorkEntryRequest request) {
         try {
-            WorkEntryResponse entry = workService.editWorkEntry(auth.getName(), entryId, request);
+            WorkSessionResponse entry = workService.editWorkEntry(auth.getName(), entryId, request);
             return ResponseEntity.ok(entry);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
