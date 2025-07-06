@@ -12,10 +12,12 @@ interface AuthContextType {
   token: string | null
   isLoading: boolean
   username: string | null
+  setToken: (token: string | null) => void
 }
 
 interface AuthResponse {
   token: string
+  refreshToken: string
   username: string
 }
 
@@ -49,29 +51,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const refreshToken = async (token: string) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        credentials: 'include'
-      })
-      if (response.ok) {
-        const data = await response.json()
-        const newToken = data.token
-        localStorage.setItem('token', newToken)
-        setToken(newToken)
-        return newToken
-      }
-      return null
-    } catch (err) {
-      return null
-    }
-  }
-
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem('token')
@@ -101,9 +80,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const refreshInterval = setInterval(async () => {
       try {
-        const newToken = await refreshToken(token)
-        if (newToken) {
+        const refreshTokenString = localStorage.getItem('refreshToken')
+        if (!refreshTokenString) {
+          logout()
+          throw new Error('No refresh token found. Please login again.')
+        }
+        const refreshResponse = await refreshToken(refreshTokenString)
+        if (refreshResponse) {
           console.log('Token refreshed automatically')
+          setToken(refreshResponse.token)
+          localStorage.setItem('token', refreshResponse.token)
+          localStorage.setItem('refreshToken', refreshResponse.refreshToken)
         }
       } catch (error) {
         console.log('Auto-refresh failed, user will need to login on next action')
@@ -132,10 +119,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const data: AuthResponse = await response.json()
-      const bearerToken = data.token
-      localStorage.setItem('token', bearerToken)
+      const accessToken = data.token
+      const refreshToken = data.refreshToken
+      localStorage.setItem('token', accessToken)
+      localStorage.setItem('refreshToken', refreshToken)
       localStorage.setItem('username', data.username)
-      setToken(bearerToken)
+      setToken(accessToken)
       setUsername(data.username)
       setIsAuthenticated(true)
       setError(null)
@@ -186,14 +175,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, register, logout, error, token, isLoading, username }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, register, logout, error, token, isLoading, username, setToken }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
 export const useAuthenticatedFetch = () => {
-  const { token, logout } = useAuth()
+  const { token, logout, setToken } = useAuth()
 
   return async (url: string, options: RequestInit = {}) => {
     const makeRequest = async (authToken: string) => {
@@ -213,26 +202,29 @@ export const useAuthenticatedFetch = () => {
 
     // First attempt with current token
     let response = await makeRequest(token!)
-    
+
     // If token is expired (401), try to refresh it
     if (response.status === 401 && token) {
       try {
-        const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          credentials: 'include'
-        })
-        
-        if (refreshResponse.ok) {
-          const data = await refreshResponse.json()
-          const newToken = data.token
-          localStorage.setItem('token', newToken)
-          
+        const refreshTokenString = localStorage.getItem('refreshToken')
+        if (!refreshTokenString) {
+          logout()
+          throw new Error('No refresh token found. Please login again.')
+        }
+
+        const refreshResponse = await refreshToken(refreshTokenString)
+
+        if (refreshResponse && refreshResponse.token) {
           // Retry the original request with the new token
-          response = await makeRequest(newToken)
+          response = await makeRequest(refreshResponse.token)
+          if (response.ok) {
+            setToken(refreshResponse.token)
+            localStorage.setItem('token', refreshResponse.token)
+            localStorage.setItem('refreshToken', refreshResponse.refreshToken)
+          } else {
+            logout()
+            throw new Error('Session expired. Please login again.')
+          }
         } else {
           // Refresh failed, user needs to login again
           logout()
@@ -243,7 +235,7 @@ export const useAuthenticatedFetch = () => {
         throw new Error('Session expired. Please login again.')
       }
     }
-    
+
     return response
   }
 }
@@ -254,4 +246,24 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
-} 
+}
+
+export const refreshToken = async (refreshToken: string) => {
+  try {
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken: `Bearer ${refreshToken}` }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      }
+    })
+    if (response.ok) {
+      const data = await response.json()
+      return data
+    }
+    return null
+  } catch (err) {
+    return null
+  }
+}

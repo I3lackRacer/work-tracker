@@ -2,7 +2,8 @@ package de.timbang.backend.controller;
 
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import de.timbang.backend.model.JwtTokenPacket;
+import de.timbang.backend.model.dto.request.RefreshTokenRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,8 +21,11 @@ import jakarta.servlet.http.HttpServletRequest;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
-    @Autowired
-    private AuthService authService;
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
@@ -36,12 +40,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest credentials) {
         try {
-            String token = authService.login(credentials);
-            return ResponseEntity.ok(Map.of(
-                "token", token,
-                "type", "Bearer",
-                "username", credentials.username()
-            ));
+            JwtTokenPacket jwtTokenPacketResponseEntity = authService.login(credentials);
+            return ResponseEntity.ok(jwtTokenPacketResponseEntity);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", e.getMessage()));
@@ -66,22 +66,17 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(HttpServletRequest request) {
+    public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest request) {
         try {
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Authorization header required"));
+            String refreshToken = request.refreshToken();
+            if (refreshToken == null || !refreshToken.startsWith("Bearer ")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Refresh token required"));
             }
-            
-            String token = authHeader.substring(7);
-            String newToken = authService.refreshToken(token);
-            String username = authService.extractUsernameFromToken(newToken);
-            
-            return ResponseEntity.ok(Map.of(
-                "token", newToken,
-                "type", "Bearer",
-                "username", username
-            ));
+
+            String token = refreshToken.substring(7);
+            JwtTokenPacket jwtTokenPacket = authService.refreshToken(token);
+
+            return ResponseEntity.ok(jwtTokenPacket);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", e.getMessage()));

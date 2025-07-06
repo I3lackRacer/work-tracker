@@ -2,6 +2,7 @@ package de.timbang.backend.service;
 
 import java.util.Optional;
 
+import de.timbang.backend.model.JwtTokenPacket;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,7 @@ public class AuthService {
         return "User registered successfully";
     }
 
-    public String login(LoginRequest credentials) {
+    public JwtTokenPacket login(LoginRequest credentials) {
         // Fetch the user by username
         Optional<User> user = userRepository.findByUsername(credentials.username());
         if (user.isEmpty()) {
@@ -50,8 +51,9 @@ public class AuthService {
         if (!passwordEncoder.matches(credentials.password(), user.get().getPassword())) {
             throw new RuntimeException("Invalid username or password");
         }
-
-        return jwtService.generateToken(credentials.username());
+        String refreshToken = jwtService.generateRefreshToken(user.get().getUsername());
+        String token = jwtService.generateToken(credentials.username());
+        return new JwtTokenPacket(credentials.username(), token, refreshToken);
     }
 
     public boolean validateToken(String token, String username) {
@@ -62,14 +64,16 @@ public class AuthService {
         return jwtService.extractUsername(token);
     }
 
-    public String refreshToken(String token) {
+    public JwtTokenPacket refreshToken(String token) {
         // Validate the current token
         String username = jwtService.extractUsername(token);
         if (!jwtService.isTokenValid(token, username)) {
             throw new RuntimeException("Invalid token");
         }
-        
-        // Generate a new token with extended expiration
-        return jwtService.refreshToken(token);
+
+        // Generate a new token
+        String newToken = jwtService.generateToken(username);
+        String refreshToken = jwtService.generateRefreshToken(username);
+        return new JwtTokenPacket(username, newToken, refreshToken);
     }
 }
