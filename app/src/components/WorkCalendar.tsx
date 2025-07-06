@@ -40,23 +40,23 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
     weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    const completedSessions = workSessions.filter(session => session.clockOut)
+    const completedSessions = workSessions.filter(session => session.endTime)
     
     const calculateHours = (session: WorkSession): number => {
-      if (!session.clockOut) return 0
-      return (new Date(session.clockOut.timestamp).getTime() - new Date(session.clockIn.timestamp).getTime()) / (1000 * 60 * 60)
+      if (!session.endTime) return 0
+      return (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60 * 60)
     }
 
     const daily = completedSessions
-      .filter(session => new Date(session.clockIn.timestamp) >= today)
+      .filter(session => new Date(session.startTime) >= today)
       .reduce((acc, session) => acc + calculateHours(session), 0)
 
     const weekly = completedSessions
-      .filter(session => new Date(session.clockIn.timestamp) >= weekStart)
+      .filter(session => new Date(session.startTime) >= weekStart)
       .reduce((acc, session) => acc + calculateHours(session), 0)
 
     const monthly = completedSessions
-      .filter(session => new Date(session.clockIn.timestamp) >= monthStart)
+      .filter(session => new Date(session.startTime) >= monthStart)
       .reduce((acc, session) => acc + calculateHours(session), 0)
 
     const total = completedSessions
@@ -132,18 +132,18 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
   }
 
   const calendarEvents = workSessions.map(session => ({
-    id: session.clockIn.id.toString(),
-    title: session.clockIn.notes || 'Work Session',
-    start: session.clockIn.timestamp,
-    end: session.clockOut?.timestamp || new Date().toISOString(),
-    backgroundColor: session.clockOut ? '#3B82F6' : '#DC2626',
-    borderColor: session.clockOut ? '#2563EB' : '#DC2626',
+    id: session.id.toString(),
+    title: session.notes || 'Work Session',
+    start: session.startTime,
+    end: session.endTime || new Date().toISOString(),
+    backgroundColor: session.endTime ? '#3B82F6' : '#DC2626',
+    borderColor: session.endTime ? '#2563EB' : '#DC2626',
     extendedProps: {
-      timeRange: session.clockOut ? 
-        `${formatTime(session.clockIn.timestamp)} - ${formatTime(session.clockOut.timestamp)}` : 
-        formatTime(session.clockIn.timestamp),
-      duration: session.clockOut ? 
-        calculateDurationHours(session.clockIn.timestamp, session.clockOut.timestamp) : 
+      timeRange: session.endTime ? 
+        `${formatTime(session.startTime)} - ${formatTime(session.endTime)}` : 
+        formatTime(session.startTime),
+      duration: session.endTime ? 
+        calculateDurationHours(session.startTime, session.endTime) : 
         null
     }
   }))
@@ -162,7 +162,7 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
 
   const handleEventClick = (clickInfo: any) => {
     const sessionId = parseInt(clickInfo.event.id)
-    const session = workSessions.find(s => s.clockIn.id === sessionId)
+    const session = workSessions.find(s => s.id === sessionId)
     if (session) {
       onEdit(session)
     }

@@ -4,7 +4,7 @@ import { formatTime, formatDuration, formatDateTime, formatTimeRange } from '../
 interface WorkSessionCardProps {
   session: WorkSession
   onEdit: (session: WorkSession) => void
-  onDelete: (clockInId: number) => void
+  onDelete: (sessionId: number) => void
   isDeleting?: boolean
 }
 
@@ -16,12 +16,12 @@ const WorkSessionCard = ({ session, onEdit, onDelete, isDeleting = false }: Work
     }`}>
       <div className="flex justify-between items-center mb-2">
         <span className="font-medium">
-          {session.clockIn.notes || session.clockOut?.notes || 'No notes'}
+          {session.notes || 'No notes'}
         </span>
         <div className="flex items-center gap-2">
-          {session.clockOut && (
+          {session.endTime && (
             <span className="bg-blue-900 text-blue-200 px-3 py-1 rounded-full text-sm">
-              {formatDuration(session.clockIn.timestamp, session.clockOut.timestamp)}
+              {formatDuration(session.startTime, session.endTime)}
             </span>
           )}
           <button
@@ -34,7 +34,7 @@ const WorkSessionCard = ({ session, onEdit, onDelete, isDeleting = false }: Work
             </svg>
           </button>
           <button
-            onClick={() => onDelete(session.clockIn.id)}
+            onClick={() => onDelete(session.id)}
             className="text-red-400 hover:text-red-300 p-1 rounded transition-colors duration-200"
             title="Delete session"
           >
@@ -45,7 +45,7 @@ const WorkSessionCard = ({ session, onEdit, onDelete, isDeleting = false }: Work
         </div>
       </div>
       <div className="text-gray-300">
-        {formatTimeRange(session.clockIn.timestamp, session.clockOut?.timestamp)}
+        {formatTimeRange(session.startTime, session.endTime)}
       </div>
     </div>
   )

@@ -4,16 +4,15 @@ import type { WorkSession } from '../../types/work'
 interface EditSessionModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (clockInId: number, clockOutId: number | undefined, clockInTime: string, clockOutTime: string, clockInNotes: string, clockOutNotes: string) => Promise<void>
-  onDelete: (clockInId: number) => void
+  onSubmit: (sessionId: number, startTime: string, endTime: string, notes: string) => Promise<void>
+  onDelete: (sessionId: number) => void
   session: WorkSession
 }
 
 const EditSessionModal = ({ isOpen, onClose, onSubmit, onDelete, session }: EditSessionModalProps) => {
-  const [clockInTime, setClockInTime] = useState('')
-  const [clockOutTime, setClockOutTime] = useState('')
-  const [clockInNotes, setClockInNotes] = useState('')
-  const [clockOutNotes, setClockOutNotes] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -25,17 +24,16 @@ const EditSessionModal = ({ isOpen, onClose, onSubmit, onDelete, session }: Edit
         return localDate.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
       }
 
-      setClockInTime(formatDateTime(session.clockIn.timestamp))
-      setClockInNotes(session.clockIn.notes || '')
+      setStartTime(formatDateTime(session.startTime))
+      setNotes(session.notes || '')
       
-      if (session.clockOut) {
-        setClockOutTime(formatDateTime(session.clockOut.timestamp))
-        setClockOutNotes(session.clockOut.notes || '')
+      if (session.endTime) {
+        setEndTime(formatDateTime(session.endTime))
       } else {
         const now = new Date()
         // Adjust for timezone to ensure we get the correct local time
         const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-        setClockOutTime(localNow.toISOString().slice(0, 16))
+        setEndTime(localNow.toISOString().slice(0, 16))
       }
     }
   }, [isOpen, session])
@@ -44,20 +42,18 @@ const EditSessionModal = ({ isOpen, onClose, onSubmit, onDelete, session }: Edit
     e.preventDefault()
     try {
       // Create Date objects from the input values
-      const startDate = new Date(clockInTime)
-      const endDate = new Date(clockOutTime)
+      const startDate = new Date(startTime)
+      const endDate = new Date(endTime)
       
       // Adjust for timezone offset to preserve local time
       const startTimeISO = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000).toISOString()
       const endTimeISO = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString()
 
       await onSubmit(
-        session.clockIn.id,
-        session.clockOut?.id,
+        session.id,
         startTimeISO,
         endTimeISO,
-        clockInNotes,
-        clockOutNotes
+        notes
       )
       onClose()
     } catch (err) {
@@ -73,41 +69,32 @@ const EditSessionModal = ({ isOpen, onClose, onSubmit, onDelete, session }: Edit
         <h2 className="text-xl font-bold mb-4">Edit Work Session</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Clock In Time</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Start Time</label>
             <input
               type="datetime-local"
-              value={clockInTime}
-              onChange={(e) => setClockInTime(e.target.value)}
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
               className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Clock In Notes</label>
-            <textarea
-              value={clockInNotes}
-              onChange={(e) => setClockInNotes(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows={2}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Clock Out Time</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">End Time</label>
             <input
               type="datetime-local"
-              value={clockOutTime}
-              onChange={(e) => setClockOutTime(e.target.value)}
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
               className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Clock Out Notes</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Notes</label>
             <textarea
-              value={clockOutNotes}
-              onChange={(e) => setClockOutNotes(e.target.value)}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
               className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows={2}
+              rows={3}
             />
           </div>
           {error && (
@@ -117,7 +104,7 @@ const EditSessionModal = ({ isOpen, onClose, onSubmit, onDelete, session }: Edit
             <button
               type="button"
               onClick={() => {
-                onDelete(session.clockIn.id)
+                onDelete(session.id)
                 onClose()
               }}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200"

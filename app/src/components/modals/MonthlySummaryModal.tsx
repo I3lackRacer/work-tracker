@@ -34,8 +34,8 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
   })
 
   const calculateHours = (session: WorkSession): number => {
-    if (!session.clockOut) return 0
-    return (new Date(session.clockOut.timestamp).getTime() - new Date(session.clockIn.timestamp).getTime()) / (1000 * 60 * 60)
+    if (!session.endTime) return 0
+    return (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60 * 60)
   }
 
   const formatDate = (dateString: string): string => {
@@ -60,8 +60,8 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
     const endDate = new Date(parseInt(year), parseInt(month), 0)
     
     return workSessions.filter(session => {
-      const sessionDate = new Date(session.clockIn.timestamp)
-      return sessionDate >= startDate && sessionDate <= endDate && session.clockOut
+      const sessionDate = new Date(session.startTime)
+      return sessionDate >= startDate && sessionDate <= endDate && session.endTime
     })
   }
 
@@ -93,7 +93,7 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
     // Daily breakdown
     const dailyMap = new Map<string, { hours: number; sessions: number }>()
     sessions.forEach(session => {
-      const date = new Date(session.clockIn.timestamp).toISOString().split('T')[0]
+      const date = new Date(session.startTime).toISOString().split('T')[0]
       const hours = calculateHours(session)
       const existing = dailyMap.get(date) || { hours: 0, sessions: 0 }
       dailyMap.set(date, { hours: existing.hours + hours, sessions: existing.sessions + 1 })
@@ -111,8 +111,8 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
     // Find longest and shortest sessions
     const sessionDetails = sessions.map(session => ({
       hours: calculateHours(session),
-      date: formatDate(session.clockIn.timestamp),
-      notes: session.clockIn.notes || session.clockOut?.notes
+      date: formatDate(session.startTime),
+      notes: session.notes
     }))
 
     const longestSession = sessionDetails.reduce((max, session) => 

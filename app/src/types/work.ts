@@ -6,6 +6,9 @@ export interface WorkEntry {
 }
 
 export interface WorkSession {
-  clockIn: WorkEntry
-  clockOut?: WorkEntry
+  id: number
+  username: string
+  startTime: string
+  endTime?: string
+  notes?: string
 } 

@@ -7,7 +7,7 @@ import DeleteConfirmationModal from '../components/modals/DeleteConfirmationModa
 import SettingsModal from '../components/modals/SettingsModal'
 import WorkSessionCard from '../components/WorkSessionCard'
 import { formatTime, formatDuration, formatDateTimeForInput } from '../utils/dateUtils'
-import type { WorkEntry, WorkSession } from '../types/work'
+import type { WorkSession } from '../types/work'
 import type { WorkSettings } from '../components/modals/SettingsModal'
 import * as XLSX from 'xlsx'
 import '../styles/calendar.css'
@@ -49,16 +49,16 @@ const WorkTracker = () => {
   weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1)
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const completedSessions = workSessions.filter(session => session.clockOut)
+  const completedSessions = workSessions.filter(session => session.endTime)
   const calculateHours = (session: WorkSession): number => {
-    if (!session.clockOut) return 0
-    return (new Date(session.clockOut.timestamp).getTime() - new Date(session.clockIn.timestamp).getTime()) / (1000 * 60 * 60)
+    if (!session.endTime) return 0
+    return (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60 * 60)
   }
 
   const stats = {
-    daily: Math.round(completedSessions.filter(session => new Date(session.clockIn.timestamp) >= today).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
-    weekly: Math.round(completedSessions.filter(session => new Date(session.clockIn.timestamp) >= weekStart).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
-    monthly: Math.round(completedSessions.filter(session => new Date(session.clockIn.timestamp) >= monthStart).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
+    daily: Math.round(completedSessions.filter(session => new Date(session.startTime) >= today).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
+    weekly: Math.round(completedSessions.filter(session => new Date(session.startTime) >= weekStart).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
+    monthly: Math.round(completedSessions.filter(session => new Date(session.startTime) >= monthStart).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
     total: Math.round(completedSessions.reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10
   }
 
@@ -118,25 +118,11 @@ const WorkTracker = () => {
         throw new Error('Failed to fetch work entries')
       }
 
-      const entries = await response.json() as WorkEntry[]
-
-      const sessions: WorkSession[] = []
-      let currentSession: WorkSession | null = null
-
-      entries.sort((a: WorkEntry, b: WorkEntry) => a.timestamp.localeCompare(b.timestamp))
-        .forEach((entry: WorkEntry) => {
-          if (entry.type === 'CLOCK_IN') {
-            currentSession = { clockIn: entry }
-            sessions.push(currentSession)
-          } else if (entry.type === 'CLOCK_OUT' && currentSession) {
-            currentSession.clockOut = entry
-            currentSession = null
-          }
-        })
+      const sessions = await response.json() as WorkSession[]
 
       setWorkSessions(sessions)
       const lastSession = sessions[sessions.length - 1]
-      if (lastSession && !lastSession.clockOut) {
+      if (lastSession && !lastSession.endTime) {
         setIsWorking(true)
         setCurrentSession(lastSession)
       }
@@ -175,10 +161,9 @@ const WorkTracker = () => {
         throw new Error(errorData.message || errorData.error || 'Failed to clock in')
       }
 
-      const entry = await response.json()
-      const newSession: WorkSession = { clockIn: entry }
-      setWorkSessions([...workSessions, newSession])
-      setCurrentSession(newSession)
+      const session = await response.json()
+      setWorkSessions([...workSessions, session])
+      setCurrentSession(session)
       setIsWorking(true)
       setNotes('')
       setError(null)
@@ -189,13 +174,17 @@ const WorkTracker = () => {
 
   const clockOut = async () => {
     try {
+      if (!currentSession) {
+        throw new Error('No active session to clock out')
+      }
+
       let timestamp
       if (isManualEntry) {
         const date = new Date(manualDateTime)
         timestamp = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString()
       }
 
-      const response = await authenticatedFetch(`${API_URL}/work/clock-out`, {
+      const response = await authenticatedFetch(`${API_URL}/work/clock-out/${currentSession.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -211,12 +200,12 @@ const WorkTracker = () => {
         throw new Error('Failed to clock out')
       }
 
-      const entry = await response.json()
+      const updatedSession = await response.json()
 
       if (currentSession) {
         const updatedSessions = workSessions.map(session =>
-          session === currentSession
-            ? { ...session, clockOut: entry }
+          session.id === currentSession.id
+            ? updatedSession
             : session
         )
         setWorkSessions(updatedSessions)
@@ -231,13 +220,13 @@ const WorkTracker = () => {
     }
   }
 
-  const deleteWorkSession = async (clockInId: number) => {
+  const deleteWorkSession = async (sessionId: number) => {
     try {
-      setDeletingSessions(prev => new Set([...prev, clockInId]))
+      setDeletingSessions(prev => new Set([...prev, sessionId]))
 
       await new Promise(resolve => setTimeout(resolve, 300))
 
-      const response = await authenticatedFetch(`${API_URL}/work/entries/${clockInId}`, {
+      const response = await authenticatedFetch(`${API_URL}/work/entries/${sessionId}`, {
         method: 'DELETE'
       })
 
@@ -245,10 +234,10 @@ const WorkTracker = () => {
         throw new Error('Failed to delete work session')
       }
 
-      setWorkSessions(workSessions.filter(session => session.clockIn.id !== clockInId))
+      setWorkSessions(workSessions.filter(session => session.id !== sessionId))
       setDeletingSessions(prev => {
         const newSet = new Set(prev)
-        newSet.delete(clockInId)
+        newSet.delete(sessionId)
         return newSet
       })
       setError(null)
@@ -256,55 +245,35 @@ const WorkTracker = () => {
       setError(err instanceof Error ? err.message : 'Failed to delete work session')
       setDeletingSessions(prev => {
         const newSet = new Set(prev)
-        newSet.delete(clockInId)
+        newSet.delete(sessionId)
         return newSet
       })
     }
   }
 
   const editWorkSession = async (
-    clockInId: number,
-    clockOutId: number | undefined,
-    clockInTime: string,
-    clockOutTime: string,
-    clockInNotes: string,
-    clockOutNotes: string
+    sessionId: number,
+    startTime: string,
+    endTime: string,
+    notes: string
   ) => {
     try {
-      const clockInResponse = await authenticatedFetch(`${API_URL}/work/entries/${clockInId}`, {
+      const response = await authenticatedFetch(`${API_URL}/work/entries/${sessionId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          newTimestamp: new Date(clockInTime).toISOString(),
-          notes: clockInNotes
+          startTime: new Date(startTime).toISOString(),
+          endTime: endTime ? new Date(endTime).toISOString() : null,
+          notes
         })
       })
 
-      if (!clockInResponse.ok) {
-        const errorData = await clockInResponse.json()
-        throw new Error(errorData.error || 'Failed to edit clock in entry')
-      }
-
-      if (clockOutId) {
-        const clockOutResponse = await authenticatedFetch(`${API_URL}/work/entries/${clockOutId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            newTimestamp: new Date(clockOutTime).toISOString(),
-            notes: clockOutNotes
-          })
-        })
-
-        if (!clockOutResponse.ok) {
-          const errorData = await clockOutResponse.json()
-          throw new Error(errorData.error || 'Failed to edit clock out entry')
-        }
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to edit work session')
       }
 
       await fetchWorkEntries()
@@ -351,13 +320,12 @@ const WorkTracker = () => {
 
   const exportToExcel = () => {
     const exportData = workSessions
-      .filter(session => session.clockOut)
+      .filter(session => session.endTime)
       .map(session => ({
-        'Start Time': new Date(session.clockIn.timestamp).toLocaleString(),
-        'End Time': new Date(session.clockOut!.timestamp).toLocaleString(),
-        'Worked Time': formatDuration(session.clockIn.timestamp, session.clockOut!.timestamp),
-        'Start Notes': session.clockIn.notes || '',
-        'End Notes': session.clockOut!.notes || ''
+        'Start Time': new Date(session.startTime).toLocaleString(),
+        'End Time': new Date(session.endTime!).toLocaleString(),
+        'Worked Time': formatDuration(session.startTime, session.endTime!),
+        'Notes': session.notes || ''
       }))
 
     const ws = XLSX.utils.json_to_sheet(exportData)
@@ -380,13 +348,13 @@ const WorkTracker = () => {
     XLSX.writeFile(wb, filename)
   }
 
-  const handleDeleteClick = (clockInId: number) => {
-    setDeletingSessionId(clockInId)
+  const handleDeleteClick = (sessionId: number) => {
+    setDeletingSessionId(sessionId)
     const skipDeleteConfirmation = localStorage.getItem('skipDeleteConfirmation') === 'true'
     if (!skipDeleteConfirmation) {
       setShowDeleteConfirmation(true)
     } else {
-      deleteWorkSession(clockInId)
+      deleteWorkSession(sessionId)
     }
   }
 
@@ -662,9 +630,9 @@ const WorkTracker = () => {
                 </button>
               </div>
               <div className="space-y-2">
-                <p className="text-gray-300">Started at: {formatTime(currentSession.clockIn.timestamp)}</p>
-                {currentSession.clockIn.notes && (
-                  <p className="text-gray-300">Notes: {currentSession.clockIn.notes}</p>
+                <p className="text-gray-300">Started at: {formatTime(currentSession.startTime)}</p>
+                {currentSession.notes && (
+                  <p className="text-gray-300">Notes: {currentSession.notes}</p>
                 )}
               </div>
             </div>
@@ -677,19 +645,19 @@ const WorkTracker = () => {
             ) : (
               <div className="space-y-3">
                 {workSessions
-                  .filter(session => session.clockOut)
+                  .filter(session => session.endTime)
                   .reverse()
                   .slice((currentPage - 1) * sessionsPerPage, currentPage * sessionsPerPage)
                   .map(session => (
                     <WorkSessionCard
-                      key={session.clockIn.id}
+                      key={session.id}
                       session={session}
                       onEdit={setEditingSession}
-                      onDelete={() => handleDeleteClick(session.clockIn.id)}
-                      isDeleting={deletingSessions.has(session.clockIn.id)}
+                      onDelete={() => handleDeleteClick(session.id)}
+                      isDeleting={deletingSessions.has(session.id)}
                     />
                   ))}
-                {workSessions.filter(session => session.clockOut).length > sessionsPerPage && (
+                {workSessions.filter(session => session.endTime).length > sessionsPerPage && (
                   <div className="flex justify-between items-center mt-4">
                     <button
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
@@ -699,11 +667,11 @@ const WorkTracker = () => {
                       Previous
                     </button>
                     <span className="text-gray-400">
-                      Page {currentPage} of {Math.ceil(workSessions.filter(session => session.clockOut).length / sessionsPerPage)}
+                      Page {currentPage} of {Math.ceil(workSessions.filter(session => session.endTime).length / sessionsPerPage)}
                     </span>
                     <button
-                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(workSessions.filter(session => session.clockOut).length / sessionsPerPage), prev + 1))}
-                      disabled={currentPage >= Math.ceil(workSessions.filter(session => session.clockOut).length / sessionsPerPage)}
+                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(workSessions.filter(session => session.endTime).length / sessionsPerPage), prev + 1))}
+                      disabled={currentPage >= Math.ceil(workSessions.filter(session => session.endTime).length / sessionsPerPage)}
                       className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
