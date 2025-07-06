@@ -265,8 +265,8 @@ const WorkTracker = () => {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          startTime: new Date(startTime).toISOString(),
-          endTime: endTime ? new Date(endTime).toISOString() : null,
+          newStartTime: new Date(startTime).toISOString(),
+          newEndTime: endTime ? new Date(endTime).toISOString() : null,
           notes
         })
       })
@@ -292,22 +292,42 @@ const WorkTracker = () => {
       const startTimeISO = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000).toISOString()
       const endTimeISO = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString()
 
-      const response = await authenticatedFetch(`${API_URL}/work/manual-entry`, {
+      // First, clock in with the start time
+      const clockInResponse = await authenticatedFetch(`${API_URL}/work/clock-in`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          startTime: startTimeISO,
-          endTime: endTimeISO,
-          notes
+          notes,
+          timestamp: startTimeISO
         })
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to add manual entry')
+      if (!clockInResponse.ok) {
+        const errorData = await clockInResponse.json()
+        throw new Error(errorData.message || errorData.error || 'Failed to clock in for manual entry')
+      }
+
+      const session = await clockInResponse.json()
+
+      // Then immediately clock out with the end time
+      const clockOutResponse = await authenticatedFetch(`${API_URL}/work/clock-out/${session.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          notes,
+          timestamp: endTimeISO
+        })
+      })
+
+      if (!clockOutResponse.ok) {
+        const errorData = await clockOutResponse.json()
+        throw new Error(errorData.message || errorData.error || 'Failed to clock out for manual entry')
       }
 
       await fetchWorkEntries()
