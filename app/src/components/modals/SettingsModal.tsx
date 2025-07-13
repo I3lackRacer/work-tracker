@@ -13,14 +13,38 @@ export interface WorkSettings {
   trackLunchBreak: boolean
   defaultLunchBreakMinutes: number
   workDays: string // Comma-separated list of day numbers (1-7, where 1 is Monday)
+  state: string
+  showHolidays: boolean
 }
+
+const FEDERAL_STATES = [
+  { value: 'BW', label: 'Baden-Württemberg' },
+  { value: 'BY', label: 'Bayern' },
+  { value: 'BE', label: 'Berlin' },
+  { value: 'BB', label: 'Brandenburg' },
+  { value: 'HB', label: 'Bremen' },
+  { value: 'HH', label: 'Hamburg' },
+  { value: 'HE', label: 'Hessen' },
+  { value: 'MV', label: 'Mecklenburg-Vorpommern' },
+  { value: 'NI', label: 'Niedersachsen' },
+  { value: 'NW', label: 'Nordrhein-Westfalen' },
+  { value: 'RP', label: 'Rheinland-Pfalz' },
+  { value: 'SL', label: 'Saarland' },
+  { value: 'SN', label: 'Sachsen' },
+  { value: 'ST', label: 'Sachsen-Anhalt' },
+  { value: 'SH', label: 'Schleswig-Holstein' },
+  { value: 'TH', label: 'Thüringen' },
+  { value: 'NATIONAL', label: 'Deutschlandweit' }
+]
 
 const defaultSettings: WorkSettings = {
   expectedWeeklyHours: 40,
   expectedMonthlyHours: 160, // 40 hours * 4 weeks
   trackLunchBreak: true,
   defaultLunchBreakMinutes: 30,
-  workDays: '1,2,3,4,5' // Monday to Friday
+  workDays: '1,2,3,4,5', // Monday to Friday
+  state: 'NATIONAL',
+  showHolidays: true
 }
 
 const DAYS_OF_WEEK = [
@@ -124,10 +148,13 @@ const SettingsModal = ({ isOpen, onClose, onSave, initialSettings }: SettingsMod
             </div>
           </div>
 
-          {/* Lunch Break Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Lunch Break</h3>
+                    {/* Lunch Break and Federal State Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column */}
             <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Lunch Break</h3>
+              
+              {/* Track Lunch Break Checkbox */}
               <label className="flex items-center space-x-3">
                 <input
                   type="checkbox"
@@ -140,22 +167,62 @@ const SettingsModal = ({ isOpen, onClose, onSave, initialSettings }: SettingsMod
                 />
                 <span className="text-gray-300">Track Lunch Break</span>
               </label>
-              {settings.trackLunchBreak && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Default Break Duration (minutes)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="180"
-                    value={settings.defaultLunchBreakMinutes}
-                    onChange={(e) => setSettings(prev => ({
-                      ...prev,
-                      defaultLunchBreakMinutes: parseInt(e.target.value)
-                    }))}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              )}
+
+              {/* Break Duration Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Default Break Duration (minutes)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="180"
+                  value={settings.defaultLunchBreakMinutes}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    defaultLunchBreakMinutes: parseInt(e.target.value)
+                  }))}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Federal State</h3>
+              
+              {/* Show Holidays Checkbox */}
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={settings.showHolidays}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    showHolidays: e.target.checked
+                  }))}
+                  className="form-checkbox h-5 w-5 text-blue-600 rounded border-gray-600 bg-gray-700 focus:ring-blue-500"
+                />
+                <span className="text-gray-300">Show Holidays</span>
+              </label>
+              
+              {/* State Select */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Select your federal state</label>
+                <select
+                  value={settings.state}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    state: e.target.value
+                  }))}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {FEDERAL_STATES.map(state => (
+                    <option key={state.value} value={state.value}>
+                      {state.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

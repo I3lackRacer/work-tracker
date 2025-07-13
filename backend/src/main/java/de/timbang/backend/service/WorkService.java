@@ -4,14 +4,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import de.timbang.backend.model.WorkSession;
+import de.timbang.backend.model.*;
 import de.timbang.backend.model.dto.response.WorkSessionResponse;
 import de.timbang.backend.repository.WorkSessionRepository;
 import org.springframework.stereotype.Service;
 
-import de.timbang.backend.model.User;
-import de.timbang.backend.model.WorkConfig;
-import de.timbang.backend.model.WorkEntry;
 import de.timbang.backend.model.WorkEntry.EntryType;
 import de.timbang.backend.model.dto.request.ClockEntryRequest;
 import de.timbang.backend.model.dto.request.EditWorkEntryRequest;
@@ -138,6 +135,8 @@ public class WorkService {
         config.setTrackLunchBreak(request.trackLunchBreak());
         config.setDefaultLunchBreakMinutes(request.defaultLunchBreakMinutes());
         config.setWorkDays(request.workDays());
+        config.setState(State.valueOf(request.state()));
+        config.setShowHoliday(request.showHolidays());
 
         return WorkConfigResponse.fromEntity(workConfigRepository.save(config));
     }

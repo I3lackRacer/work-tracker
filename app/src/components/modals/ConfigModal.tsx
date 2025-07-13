@@ -15,6 +15,7 @@ interface WorkConfig {
   defaultLunchBreakMinutes: number
   workDays: string
   showForecast: boolean
+  state: string
 }
 
 const WEEKDAYS = [
@@ -36,7 +37,8 @@ const ConfigModal = ({ isOpen, onClose }: ConfigModalProps) => {
     trackLunchBreak: true,
     defaultLunchBreakMinutes: 30,
     workDays: '1,2,3,4,5',
-    showForecast: true
+    showForecast: true,
+    state: 'HE'
   })
   const [error, setError] = useState<string | null>(null)
   const [isWorkDaysOpen, setIsWorkDaysOpen] = useState(false)
@@ -239,6 +241,16 @@ const ConfigModal = ({ isOpen, onClose }: ConfigModalProps) => {
             </div>
           </form>
         )}
+      </div>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4">State</h2>
+          <div className="flex flex-col gap-2">
+            <button className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200">
+              HE
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

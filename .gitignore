@@ -68,3 +68,4 @@ Desktop.ini
 ### Database Files ###
 *.db
 *.sqlite
+cloc-2.06.exe

@@ -13,6 +13,7 @@ import * as XLSX from 'xlsx'
 import '../styles/calendar.css'
 import SummaryModal from '../components/modals/SummaryModal'
 import MonthlySummaryModal from '../components/modals/MonthlySummaryModal'
+import type { Holiday } from '../types/holiday'
 
 const API_URL = (import.meta.env.VITE_API_URL || '') + "/api/v1"
 
@@ -29,6 +30,7 @@ const WorkTracker = () => {
   const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null)
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const [deletingSessions, setDeletingSessions] = useState<Set<number>>(new Set())
+  const [holidays, setHolidays] = useState<Holiday[]>([])
   const { logout, username } = useAuth()
   const authenticatedFetch = useAuthenticatedFetch()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -103,11 +105,14 @@ const WorkTracker = () => {
         expectedMonthlyHours: 160,
         trackLunchBreak: true,
         defaultLunchBreakMinutes: 30,
-        workDays: '1,2,3,4,5'
+        workDays: '1,2,3,4,5',
+        state: 'NATIONAL',
+        showHolidays: true
       })
     }
     const data = await response.json()
     setWorkSettings(data)
+    fetchHolidays()
   }
 
   const fetchWorkEntries = async () => {
@@ -135,6 +140,15 @@ const WorkTracker = () => {
     fetchWorkEntries()
     fetchWorkSettings()
   }, [])
+
+  const fetchHolidays = async () => {
+    const response = await authenticatedFetch(`${API_URL}/holiday/state/${workSettings?.state}`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch holidays')
+    }
+    const data = await response.json() as Holiday[]
+    setHolidays(data)
+  }
 
   const clockIn = async () => {
     try {
@@ -709,6 +723,7 @@ const WorkTracker = () => {
             onAddManualEntry={addManualEntry}
             onEdit={setEditingSession}
             workSettings={workSettings}
+            holidays={holidays}
           />
         </div>
       </div>

@@ -1,11 +1,8 @@
 package de.timbang.backend.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.*;
 import lombok.Data;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @Entity
 @Data
@@ -23,4 +20,11 @@ public class WorkConfig {
     private Boolean trackLunchBreak;
     private Integer defaultLunchBreakMinutes;
     private String workDays; // Stored as comma-separated list of day numbers (1-7, where 1 is Monday)
+
+    @Column(nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'NATIONAL'")
+    @Enumerated(EnumType.STRING)
+    private State state = State.NATIONAL;
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT 1")
+    private boolean showHoliday = true;
 } 

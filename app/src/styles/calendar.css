@@ -97,3 +97,33 @@
 .fc .fc-scrollgrid-liquid {
   height: 100% !important;
 } 
+
+/* Holiday day styling */
+.holiday-day {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border: 2px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.holiday-day .fc-daygrid-day-number {
+  color: #FCA5A5 !important;
+  font-weight: 600;
+}
+
+.holiday-day .fc-col-header-cell-cushion {
+  color: #FCA5A5 !important;
+  font-weight: 600;
+} 
+
+/* Holiday event styling */
+.holiday-event {
+  color: #FCA5A5 !important;
+  font-weight: 600;
+  text-align: center;
+  padding: 2px 4px;
+}
+
+.fc-event[data-event-id^="holiday-"] {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #FCA5A5 !important;
+}

@@ -6,12 +6,14 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { WorkSession } from '../types/work'
 import type { WorkSettings } from './modals/SettingsModal'
 import { formatTime } from '../utils/dateUtils'
+import type { Holiday } from '../types/holiday'
 
 interface WorkCalendarProps {
   workSessions: WorkSession[]
   onAddManualEntry: (startTime: string, endTime: string, notes: string) => Promise<void>
   onEdit: (session: WorkSession) => void
   workSettings: WorkSettings | undefined  
+  holidays: Holiday[]
 }
 
 interface WorkStats {
@@ -21,7 +23,7 @@ interface WorkStats {
   total: number
 }
 
-const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: WorkCalendarProps) => {
+const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings, holidays }: WorkCalendarProps) => {
   const [stats, setStats] = useState<WorkStats>({
     daily: 0,
     weekly: 0,
@@ -131,22 +133,59 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
     return Math.round((endTime - startTime) / (1000 * 60 * 60) * 10) / 10
   }
 
-  const calendarEvents = workSessions.map(session => ({
-    id: session.id.toString(),
-    title: session.notes || 'Work Session',
-    start: session.startTime,
-    end: session.endTime || new Date().toISOString(),
-    backgroundColor: session.endTime ? '#3B82F6' : '#DC2626',
-    borderColor: session.endTime ? '#2563EB' : '#DC2626',
-    extendedProps: {
-      timeRange: session.endTime ? 
-        `${formatTime(session.startTime)} - ${formatTime(session.endTime)}` : 
-        formatTime(session.startTime),
-      duration: session.endTime ? 
-        calculateDurationHours(session.startTime, session.endTime) : 
-        null
+  const getHolidayDates = (): string[] => {
+    return holidays.map(holiday => {
+      const date = new Date(holiday.date)
+      return date.toISOString().split('T')[0] // Format as YYYY-MM-DD
+    })
+  }
+
+  const dayCellClassNames = (arg: any) => {
+    const dateStr = arg.date.toISOString().split('T')[0]
+    const holidayDates = getHolidayDates()
+    /**
+    if (holidayDates.includes(dateStr)) {
+      return ['holiday-day']
     }
-  }))
+    return [] */
+  }
+
+  const getHolidayEvents = () => {
+    return holidays.map(holiday => ({
+      id: `holiday-${holiday.date}`,
+      title: holiday.name,
+      start: new Date(holiday.date).toISOString().split('T')[0], // All day event
+      allDay: true,
+      display: 'background',
+      backgroundColor: 'rgba(239, 68, 68, 0.2)',
+      textColor: '#FCA5A5',
+      extendedProps: {
+        type: 'holiday',
+        description: holiday.description,
+        state: holiday.state
+      }
+    }))
+  }
+
+  const calendarEvents = [
+    ...workSessions.map(session => ({
+      id: session.id.toString(),
+      title: session.notes || 'Work Session',
+      start: session.startTime,
+      end: session.endTime || new Date().toISOString(),
+      backgroundColor: session.endTime ? '#3B82F6' : '#DC2626',
+      borderColor: session.endTime ? '#2563EB' : '#DC2626',
+      extendedProps: {
+        timeRange: session.endTime ? 
+          `${formatTime(session.startTime)} - ${formatTime(session.endTime)}` : 
+          formatTime(session.startTime),
+        duration: session.endTime ? 
+          calculateDurationHours(session.startTime, session.endTime) : 
+          null
+      }
+    })),
+    ...getHolidayEvents()
+  ]
 
   const handleDateSelect = async (selectInfo: any) => {
     const startTime = selectInfo.start.toISOString()
@@ -161,7 +200,20 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
   }
 
   const handleEventClick = (clickInfo: any) => {
-    const sessionId = parseInt(clickInfo.event.id)
+    const eventId = clickInfo.event.id
+    
+    // Check if it's a holiday event
+    if (eventId.startsWith('holiday-')) {
+      const holiday = holidays.find(h => `holiday-${h.date}` === eventId)
+      if (holiday) {
+        // Show holiday information (you could show a modal or alert)
+        alert(`${holiday.name}\n${holiday.description}\nState: ${holiday.state}`)
+      }
+      return
+    }
+    
+    // Handle work session events
+    const sessionId = parseInt(eventId)
     const session = workSessions.find(s => s.id === sessionId)
     if (session) {
       onEdit(session)
@@ -169,6 +221,13 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
   }
 
   const renderEventContent = (eventInfo: any) => {
+    // Handle holiday events
+    if (eventInfo.event.id.startsWith('holiday-')) {
+      return {
+        html: `<div class="holiday-event">${eventInfo.event.title}</div>`
+      }
+    }
+    
     const isMonthView = eventInfo.view.type === 'dayGridMonth'
     
     if (isMonthView) {
@@ -188,7 +247,7 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       <div className="grid grid-cols-4 gap-3 mb-4 shrink-0">
         <div className="bg-gray-800 p-3 rounded-lg">
-          <h4 className="text-gray-400 text-sm">Today</h4>
+          <h4 className="text-gray-400 text-sm">Tody</h4>
           <p className="text-xl font-semibold">{stats.daily}h</p>
         </div>
         <div className="bg-gray-800 p-3 rounded-lg">
@@ -277,6 +336,7 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings }: 
             startTime: '06:00',
             endTime: '21:00',
           }}
+          dayCellClassNames={dayCellClassNames}
         />
       </div>
     </div>

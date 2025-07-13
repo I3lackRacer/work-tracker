@@ -5,5 +5,7 @@ public record WorkConfigRequest(
     Integer expectedMonthlyHours,
     Boolean trackLunchBreak,
     Integer defaultLunchBreakMinutes,
-    String workDays
+    String workDays,
+    String state,
+    Boolean showHolidays
 ) {} 
