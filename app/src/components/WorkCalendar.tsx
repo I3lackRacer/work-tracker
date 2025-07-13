@@ -336,7 +336,6 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings, ho
             startTime: '06:00',
             endTime: '21:00',
           }}
-          dayCellClassNames={dayCellClassNames}
         />
       </div>
     </div>
