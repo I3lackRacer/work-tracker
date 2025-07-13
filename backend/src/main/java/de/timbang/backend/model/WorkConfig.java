@@ -21,7 +21,6 @@ public class WorkConfig {
     private Integer defaultLunchBreakMinutes;
     private String workDays; // Stored as comma-separated list of day numbers (1-7, where 1 is Monday)
 
-    @Column(nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'NATIONAL'")
     @Enumerated(EnumType.STRING)
     private State state = State.NATIONAL;
 
