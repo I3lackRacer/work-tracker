@@ -51,18 +51,24 @@ public class AuthController {
     @GetMapping("/validate")
     public ResponseEntity<?> validateToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            String username = authService.extractUsernameFromToken(token);
-            if (username != null && authService.validateToken(token, username)) {
-                return ResponseEntity.ok(Map.of(
-                    "valid", true,
-                    "username", username
-                ));
-            }
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("valid", false, "error", "Invalid or expired token"));
         }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("valid", false, "error", "Invalid or expired token"));
+
+        String token = authHeader.substring(7);
+        String username = authService.extractUsernameFromToken(token);
+        if (username == null || !authService.validateToken(token, username)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("valid", false, "error", "Invalid or expired token"));
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "valid", true,
+                "username", username
+        ));
+
+
     }
 
     @PostMapping("/refresh")

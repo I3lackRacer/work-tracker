@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { data } from 'react-router-dom'
 
 const API_URL = (import.meta.env.VITE_API_URL || '') + "/api/v1"
 
@@ -64,8 +65,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUsername(storedUsername)
           }
         } else {
-          localStorage.removeItem('token')
-          localStorage.removeItem('username')
+          const refreshTokenString = localStorage.getItem("refreshToken")
+          if (!refreshTokenString) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('username')
+            return
+          }
+
+          const refreshTokenRes = await refreshToken(refreshTokenString)
+          if (!refreshTokenRes) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('refreshToken')
+            localStorage.removeItem('username')
+            return
+          }
+
+          localStorage.setItem('token', refreshTokenRes.token)
+          localStorage.setItem('refreshToken', refreshTokenRes.refreshToken)
+          localStorage.setItem('username', refreshTokenRes.username)
         }
       }
       setIsLoading(false)
@@ -259,8 +276,7 @@ export const refreshToken = async (refreshToken: string) => {
       }
     })
     if (response.ok) {
-      const data = await response.json()
-      return data
+      return await response.json()
     }
     return null
   } catch (err) {
