@@ -142,7 +142,7 @@ const WorkTracker = () => {
   }, [])
 
   const fetchHolidays = async () => {
-    const response = await authenticatedFetch(`${API_URL}/holiday/state/${workSettings?.state}`)
+    const response = await authenticatedFetch(`${API_URL}/holiday/state/${workSettings?.state ?? 'NATIONAL'}`)
     if (!response.ok) {
       throw new Error('Failed to fetch holidays')
     }
