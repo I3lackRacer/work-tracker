@@ -307,7 +307,7 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings, ho
           <p className="text-xl font-semibold">{stats.total}h</p>
         </div>
       </div>
-      <div className="flex-1 bg-gray-800 rounded-lg p-3 min-h-0 overflow-hidden">
+      <div className="flex-1 bg-gray-800 rounded-lg p-3 min-h-0 overflow-hidden calendar-container">
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
@@ -319,7 +319,7 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings, ho
           events={calendarEvents}
           eventClick={handleEventClick}
           eventContent={renderEventContent}
-          height="100%"
+          height="auto"
           expandRows={true}
           stickyHeaderDates={true}
           slotMinTime="06:00:00"

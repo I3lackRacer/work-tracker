@@ -79,24 +79,60 @@
 }
 
 /* Fix scrolling behavior */
+.calendar-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.calendar-container .fc {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fc .fc-view-harness {
+  flex: 1;
+  min-height: 0;
+}
+
 .fc .fc-scroller {
-  height: 100% !important;
+  height: auto !important;
 }
 
 .fc .fc-scroller-liquid-absolute {
-  position: relative !important;
+  position: absolute !important;
 }
 
-/* Ensure the calendar fills its container */
-.fc-view {
+/* Ensure proper scrolling for time grid */
+.fc-timegrid.fc-timeGridWeek-view,
+.fc-timegrid.fc-timeGridDay-view {
+  overflow: auto !important;
+}
+
+.fc-view-harness-active > div {
   height: 100% !important;
-  overflow: hidden !important;
+}
+
+/* Make header stick to top while scrolling */
+.fc .fc-timegrid-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--fc-page-bg-color);
 }
 
 /* Make sure the grid takes full height */
 .fc .fc-scrollgrid-liquid {
-  height: 100% !important;
+  height: 100%;
 } 
+
+/* Ensure proper scrolling in month view */
+.fc-daygrid.fc-dayGridMonth-view {
+  height: auto !important;
+  overflow: auto !important;
+}
 
 /* Holiday day styling */
 .holiday-day {
