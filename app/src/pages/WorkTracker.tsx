@@ -43,6 +43,7 @@ const WorkTracker = () => {
   })
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false)
   const [isMonthlySummaryModalOpen, setIsMonthlySummaryModalOpen] = useState(false)
+  const [elapsedTime, setElapsedTime] = useState('00:00')
 
   // Calculate stats
   const now = new Date()
@@ -55,6 +56,15 @@ const WorkTracker = () => {
   const calculateHours = (session: WorkSession): number => {
     if (!session.endTime) return 0
     return (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60 * 60)
+  }
+
+  const formatElapsedTime = (startTime: string): string => {
+    const start = new Date(startTime).getTime()
+    const now = new Date().getTime()
+    const diff = now - start
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
   }
 
   const stats = {
@@ -83,6 +93,28 @@ const WorkTracker = () => {
       document.title = `${username}'s Work Tracker`
     }
   }, [username])
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null
+    
+    if (currentSession && !currentSession.endTime) {
+      // Update immediately
+      setElapsedTime(formatElapsedTime(currentSession.startTime))
+      
+      // Then update every minute
+      intervalId = setInterval(() => {
+        setElapsedTime(formatElapsedTime(currentSession.startTime))
+      }, 60000)
+    } else {
+      setElapsedTime('00:00')
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [currentSession])
 
   useEffect(() => {
     if (isManualEntry) {
@@ -665,6 +697,7 @@ const WorkTracker = () => {
               </div>
               <div className="space-y-2">
                 <p className="text-gray-300">Started at: {formatTime(currentSession.startTime)}</p>
+                <p className="text-gray-300">Elapsed time: <span className="font-mono">{elapsedTime}</span></p>
                 {currentSession.notes && (
                   <p className="text-gray-300">Notes: {currentSession.notes}</p>
                 )}
