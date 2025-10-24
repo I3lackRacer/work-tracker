@@ -247,7 +247,7 @@ const WorkCalendar = ({ workSessions, onAddManualEntry, onEdit, workSettings, ho
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       <div className="grid grid-cols-4 gap-3 mb-4 shrink-0">
         <div className="bg-gray-800 p-3 rounded-lg">
-          <h4 className="text-gray-400 text-sm">Tody</h4>
+          <h4 className="text-gray-400 text-sm">Today</h4>
           <p className="text-xl font-semibold">{stats.daily}h</p>
         </div>
         <div className="bg-gray-800 p-3 rounded-lg">
