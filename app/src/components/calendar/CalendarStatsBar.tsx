@@ -1,6 +1,6 @@
 import type { WorkSettings } from '../modals/SettingsModal'
 import type { CalendarWorkStats } from '../../utils/workCalendarUtils'
-import { calendarCalculateProgressStatus } from '../../utils/workCalendarUtils'
+import { calendarCalculateProgressStatus, formatHoursAndMinutes } from '../../utils/workCalendarUtils'
 
 interface CalendarStatsBarProps {
   stats: CalendarWorkStats
@@ -27,16 +27,23 @@ const CalendarStatsBar = ({ stats, workSettings }: CalendarStatsBarProps) => {
       )
     : null
 
+  const todayHm = formatHoursAndMinutes(stats.dailyPrecise)
+  const weekHm = formatHoursAndMinutes(stats.weekly)
+  const monthHm = formatHoursAndMinutes(stats.monthly)
+  const totalHm = formatHoursAndMinutes(stats.total)
+  const expectedWeekHm = workSettings ? formatHoursAndMinutes(workSettings.expectedWeeklyHours) : null
+  const expectedMonthHm = workSettings ? formatHoursAndMinutes(workSettings.expectedMonthlyHours) : null
+
   return (
     <div className="grid grid-cols-4 gap-3 mb-4 shrink-0">
       <div className="bg-gray-800 p-3 rounded-lg">
         <h4 className="text-gray-400 text-sm">Today</h4>
-        <p className="text-xl font-semibold">{stats.daily}h</p>
+        <p className="text-xl font-semibold">{todayHm.primary}</p>
       </div>
       <div className="bg-gray-800 p-3 rounded-lg">
         <h4 className="text-gray-400 text-sm">This Week</h4>
         <p className="text-xl font-semibold">
-          {stats.weekly}h / {workSettings && (workSettings?.expectedWeeklyHours || 0)}h
+          {weekHm.primary} / {expectedWeekHm?.primary ?? '—'}
         </p>
         <div className="mt-2">
           <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -57,7 +64,7 @@ const CalendarStatsBar = ({ stats, workSettings }: CalendarStatsBarProps) => {
           </div>
           <p className="text-xs text-gray-400 mt-1">
             {Math.round((stats.weekly / (workSettings?.expectedWeeklyHours || 0)) * 100)}% of{' '}
-            {workSettings?.expectedWeeklyHours || 0}h
+            {expectedWeekHm?.primary ?? '—'}
             {workSettings && weekProgress && (
               <span
                 className={`ml-2 ${
@@ -77,7 +84,7 @@ const CalendarStatsBar = ({ stats, workSettings }: CalendarStatsBarProps) => {
       <div className="bg-gray-800 p-3 rounded-lg">
         <h4 className="text-gray-400 text-sm">This Month</h4>
         <p className="text-xl font-semibold">
-          {stats.monthly}h / {workSettings && (workSettings?.expectedMonthlyHours || 0)}h
+          {monthHm.primary} / {expectedMonthHm?.primary ?? '—'}
         </p>
         <div className="mt-2">
           <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -98,7 +105,7 @@ const CalendarStatsBar = ({ stats, workSettings }: CalendarStatsBarProps) => {
           </div>
           <p className="text-xs text-gray-400 mt-1">
             {Math.round((stats.monthly / (workSettings?.expectedMonthlyHours || 0)) * 100)}% of{' '}
-            {workSettings?.expectedMonthlyHours || 0}h
+            {expectedMonthHm?.primary ?? '—'}
             {workSettings && monthProgress && (
               <span
                 className={`ml-2 ${
@@ -117,7 +124,7 @@ const CalendarStatsBar = ({ stats, workSettings }: CalendarStatsBarProps) => {
       </div>
       <div className="bg-gray-800 p-3 rounded-lg">
         <h4 className="text-gray-400 text-sm">Total</h4>
-        <p className="text-xl font-semibold">{stats.total}h</p>
+        <p className="text-xl font-semibold">{totalHm.primary}</p>
       </div>
     </div>
   )

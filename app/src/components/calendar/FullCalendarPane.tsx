@@ -51,7 +51,7 @@ const FullCalendarPane = ({
   }
 
   const renderEventContent = (eventInfo: {
-    event: { id: string; title: string; extendedProps: { timeRange: string; duration: number | null } }
+    event: { id: string; title: string; extendedProps: { timeRange: string; duration: string | null } }
     view: { type: string }
   }) => {
     if (eventInfo.event.id.startsWith('holiday-')) {
@@ -66,7 +66,7 @@ const FullCalendarPane = ({
       const duration = eventInfo.event.extendedProps.duration
       if (duration === null) return { html: eventInfo.event.extendedProps.timeRange }
       return {
-        html: `${eventInfo.event.extendedProps.timeRange} • ${duration}h`,
+        html: `${eventInfo.event.extendedProps.timeRange} • ${duration}`,
       }
     }
 

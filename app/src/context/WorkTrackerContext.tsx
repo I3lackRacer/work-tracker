@@ -15,6 +15,7 @@ import type { WorkSession } from '../types/work'
 import type { WorkSettings } from '../components/modals/SettingsModal'
 import * as XLSX from 'xlsx'
 import type { Holiday } from '../types/holiday'
+import { computeCalendarStatsFromSessions } from '../utils/workCalendarUtils'
 
 const API_URL = (import.meta.env.VITE_API_URL || '') + '/api/v1'
 
@@ -85,12 +86,7 @@ export interface WorkTrackerContextValue {
 const WorkTrackerContext = createContext<WorkTrackerContextValue | undefined>(undefined)
 
 function formatElapsedTime(startTime: string): string {
-  const start = new Date(startTime).getTime()
-  const now = new Date().getTime()
-  const diff = now - start
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  return formatDuration(startTime, new Date().toISOString())
 }
 
 export const WorkTrackerProvider = ({ children }: { children: ReactNode }) => {
@@ -120,6 +116,7 @@ export const WorkTrackerProvider = ({ children }: { children: ReactNode }) => {
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false)
   const [isMonthlySummaryModalOpen, setIsMonthlySummaryModalOpen] = useState(false)
   const [elapsedTime, setElapsedTime] = useState('00:00')
+  const [statsTick, setStatsTick] = useState(0)
 
   const calculateProgressStatus = useCallback(
     (
@@ -162,6 +159,12 @@ export const WorkTrackerProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   }, [currentSession])
+
+  useEffect(() => {
+    if (!isWorking) return
+    const id = setInterval(() => setStatsTick(t => t + 1), 60_000)
+    return () => clearInterval(id)
+  }, [isWorking])
 
   useEffect(() => {
     if (isManualEntry) {
@@ -514,23 +517,12 @@ export const WorkTrackerProvider = ({ children }: { children: ReactNode }) => {
   )
 
   const value = useMemo<WorkTrackerContextValue>(() => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const weekStart = new Date(today)
-    weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1)
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-
-    const completedSessions = workSessions.filter(session => session.endTime)
-    const calculateHours = (session: WorkSession): number => {
-      if (!session.endTime) return 0
-      return (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60 * 60)
-    }
-
+    const raw = computeCalendarStatsFromSessions(workSessions)
     const stats: WorkTrackerStats = {
-      daily: Math.round(completedSessions.filter(session => new Date(session.startTime) >= today).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
-      weekly: Math.round(completedSessions.filter(session => new Date(session.startTime) >= weekStart).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
-      monthly: Math.round(completedSessions.filter(session => new Date(session.startTime) >= monthStart).reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
-      total: Math.round(completedSessions.reduce((acc, session) => acc + calculateHours(session), 0) * 10) / 10,
+      daily: raw.dailyPrecise,
+      weekly: raw.weekly,
+      monthly: raw.monthly,
+      total: raw.total,
     }
 
     return {
@@ -581,6 +573,7 @@ export const WorkTrackerProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [
     workSessions,
+    statsTick,
     isWorking,
     currentSession,
     notes,

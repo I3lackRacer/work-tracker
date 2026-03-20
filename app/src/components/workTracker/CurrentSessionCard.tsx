@@ -22,9 +22,7 @@ const CurrentSessionCard = () => {
       </div>
       <div className="space-y-2">
         <p className="text-gray-300">Started at: {formatTime(currentSession.startTime)}</p>
-        <p className="text-gray-300">
-          Elapsed time: <span className="font-mono">{elapsedTime}</span>
-        </p>
+        <p className="text-gray-300">Elapsed time: {elapsedTime}</p>
         {currentSession.notes && <p className="text-gray-300">Notes: {currentSession.notes}</p>}
       </div>
     </div>

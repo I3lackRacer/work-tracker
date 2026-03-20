@@ -1,45 +1,60 @@
 import type { WorkSession } from '../types/work'
 import type { WorkSettings } from '../components/modals/SettingsModal'
 import type { Holiday } from '../types/holiday'
-import { formatTime } from './dateUtils'
+import { formatDuration, formatTime } from './dateUtils'
 
 export interface CalendarWorkStats {
   daily: number
+  /** Unrounded; use for Today h/m and minutes so display matches live session time. */
+  dailyPrecise: number
   weekly: number
   monthly: number
   total: number
 }
 
-export function computeCalendarStatsFromSessions(workSessions: WorkSession[]): CalendarWorkStats {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+/** Rounded display for fractional hours: `3h`, `3h 24m` (aligned with {@link formatDuration}). */
+export function formatHoursAndMinutes(hours: number): { primary: string; minutesTotal: number } {
+  const totalMinutes = Math.max(0, Math.round(hours * 60))
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  if (totalMinutes === 0) return { primary: '0h', minutesTotal: 0 }
+  const primary = m === 0 ? `${h}h` : `${h}h ${m}m`
+  return { primary, minutesTotal: totalMinutes }
+}
+
+function sessionHoursThrough(session: WorkSession, asOf: Date): number {
+  const start = new Date(session.startTime).getTime()
+  const endMs = session.endTime ? new Date(session.endTime).getTime() : asOf.getTime()
+  return Math.max(0, endMs - start) / (1000 * 60 * 60)
+}
+
+export function computeCalendarStatsFromSessions(workSessions: WorkSession[], asOf: Date = new Date()): CalendarWorkStats {
+  const today = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate())
   const weekStart = new Date(today)
   weekStart.setDate(today.getDate() - (today.getDay() || 7) + 1)
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthStart = new Date(asOf.getFullYear(), asOf.getMonth(), 1)
 
-  const completedSessions = workSessions.filter(session => session.endTime)
+  const calculateHours = (session: WorkSession): number => sessionHoursThrough(session, asOf)
 
-  const calculateHours = (session: WorkSession): number => {
-    if (!session.endTime) return 0
-    return (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60 * 60)
-  }
-
-  const daily = completedSessions
+  const daily = workSessions
     .filter(session => new Date(session.startTime) >= today)
     .reduce((acc, session) => acc + calculateHours(session), 0)
 
-  const weekly = completedSessions
+  const weekly = workSessions
     .filter(session => new Date(session.startTime) >= weekStart)
     .reduce((acc, session) => acc + calculateHours(session), 0)
 
-  const monthly = completedSessions
+  const monthly = workSessions
     .filter(session => new Date(session.startTime) >= monthStart)
     .reduce((acc, session) => acc + calculateHours(session), 0)
 
-  const total = completedSessions.reduce((acc, session) => acc + calculateHours(session), 0)
+  const total = workSessions
+    .filter(session => session.endTime)
+    .reduce((acc, session) => acc + calculateHours(session), 0)
 
   return {
     daily: Math.round(daily * 10) / 10,
+    dailyPrecise: daily,
     weekly: Math.round(weekly * 10) / 10,
     monthly: Math.round(monthly * 10) / 10,
     total: Math.round(total * 10) / 10,
@@ -93,20 +108,15 @@ export function calendarCalculateProgressStatus(
   const expectedHours = (targetHours / totalWorkDays) * elapsedWorkDays
   const progress = currentHours / expectedHours
   const hoursDifference = Math.round((currentHours - expectedHours) * 10) / 10
+  const diffHm = formatHoursAndMinutes(Math.abs(hoursDifference)).primary
 
   if (progress >= 1.1) {
-    return { status: 'ahead', message: `${Math.abs(hoursDifference)}h ahead (${Math.round((progress - 1) * 100)}%)` }
+    return { status: 'ahead', message: `${diffHm} ahead (${Math.round((progress - 1) * 100)}%)` }
   }
   if (progress <= 0.9) {
-    return { status: 'behind', message: `${Math.abs(hoursDifference)}h behind (${Math.round((1 - progress) * 100)}%)` }
+    return { status: 'behind', message: `${diffHm} behind (${Math.round((1 - progress) * 100)}%)` }
   }
   return { status: 'on-track', message: 'On track' }
-}
-
-export function calculateDurationHours(start: string, end: string): number {
-  const startTime = new Date(start).getTime()
-  const endTime = new Date(end).getTime()
-  return Math.round(((endTime - startTime) / (1000 * 60 * 60)) * 10) / 10
 }
 
 export function buildHolidayCalendarEvents(holidays: Holiday[]) {
@@ -138,7 +148,7 @@ export function buildSessionCalendarEvents(workSessions: WorkSession[]) {
       timeRange: session.endTime
         ? `${formatTime(session.startTime)} - ${formatTime(session.endTime)}`
         : formatTime(session.startTime),
-      duration: session.endTime ? calculateDurationHours(session.startTime, session.endTime) : null,
+      duration: session.endTime ? formatDuration(session.startTime, session.endTime) : null,
     },
   }))
 }

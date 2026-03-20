@@ -6,12 +6,15 @@ export const formatTime = (timestamp: string) => {
   })
 }
 
+/** Human-readable length, e.g. `3h`, `3h 24m` (matches stats cards). */
 export const formatDuration = (clockIn: string, clockOut: string) => {
   const start = new Date(clockIn).getTime()
   const end = new Date(clockOut).getTime()
-  const diff = end - start
+  const diff = Math.max(0, end - start)
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  if (hours === 0 && minutes === 0) return '0h'
+  if (minutes === 0) return `${hours}h`
   return `${hours}h ${minutes}m`
 }
 

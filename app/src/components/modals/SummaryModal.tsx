@@ -1,4 +1,5 @@
 import type { WorkSettings } from './SettingsModal'
+import { formatHoursAndMinutes } from '../../utils/workCalendarUtils'
 
 interface WorkStats {
   daily: number
@@ -18,6 +19,13 @@ interface SummaryModalProps {
 const SummaryModal = ({ isOpen, onClose, stats, workSettings, calculateProgressStatus }: SummaryModalProps) => {
   if (!isOpen) return null
 
+  const todayHm = formatHoursAndMinutes(stats.daily)
+  const weekHm = formatHoursAndMinutes(stats.weekly)
+  const monthHm = formatHoursAndMinutes(stats.monthly)
+  const totalHm = formatHoursAndMinutes(stats.total)
+  const expectedWeekHm = formatHoursAndMinutes(workSettings?.expectedWeeklyHours ?? 0)
+  const expectedMonthHm = formatHoursAndMinutes(workSettings?.expectedMonthlyHours ?? 0)
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
@@ -36,12 +44,12 @@ const SummaryModal = ({ isOpen, onClose, stats, workSettings, calculateProgressS
         <div className="space-y-4">
           <div className="bg-gray-700 p-4 rounded-lg">
             <h4 className="text-gray-300 text-sm mb-2">Today</h4>
-            <p className="text-2xl font-semibold">{stats.daily}h</p>
+            <p className="text-2xl font-semibold">{todayHm.primary}</p>
           </div>
           
           <div className="bg-gray-700 p-4 rounded-lg">
             <h4 className="text-gray-300 text-sm mb-2">This Week</h4>
-            <p className="text-2xl font-semibold">{stats.weekly}h / {workSettings?.expectedWeeklyHours || 0}h</p>
+            <p className="text-2xl font-semibold">{weekHm.primary} / {expectedWeekHm.primary}</p>
             <div className="mt-3">
               <div className="h-3 bg-gray-600 rounded-full overflow-hidden">
                 <div 
@@ -53,7 +61,7 @@ const SummaryModal = ({ isOpen, onClose, stats, workSettings, calculateProgressS
                 />
               </div>
               <p className="text-sm text-gray-400 mt-2">
-                {Math.round((stats.weekly / (workSettings?.expectedWeeklyHours || 1)) * 100)}% of {workSettings?.expectedWeeklyHours || 0}h
+                {Math.round((stats.weekly / (workSettings?.expectedWeeklyHours || 1)) * 100)}% of {expectedWeekHm.primary}
                 {workSettings && (
                   <span className={`ml-2 ${
                     calculateProgressStatus(stats.weekly, workSettings.expectedWeeklyHours, workSettings.workDays, 'week').status === 'ahead' ? 'text-green-400' :
@@ -68,7 +76,7 @@ const SummaryModal = ({ isOpen, onClose, stats, workSettings, calculateProgressS
           
           <div className="bg-gray-700 p-4 rounded-lg">
             <h4 className="text-gray-300 text-sm mb-2">This Month</h4>
-            <p className="text-2xl font-semibold">{stats.monthly}h / {workSettings?.expectedMonthlyHours || 0}h</p>
+            <p className="text-2xl font-semibold">{monthHm.primary} / {expectedMonthHm.primary}</p>
             <div className="mt-3">
               <div className="h-3 bg-gray-600 rounded-full overflow-hidden">
                 <div 
@@ -80,7 +88,7 @@ const SummaryModal = ({ isOpen, onClose, stats, workSettings, calculateProgressS
                 />
               </div>
               <p className="text-sm text-gray-400 mt-2">
-                {Math.round((stats.monthly / (workSettings?.expectedMonthlyHours || 1)) * 100)}% of {workSettings?.expectedMonthlyHours || 0}h
+                {Math.round((stats.monthly / (workSettings?.expectedMonthlyHours || 1)) * 100)}% of {expectedMonthHm.primary}
                 {workSettings && (
                   <span className={`ml-2 ${
                     calculateProgressStatus(stats.monthly, workSettings.expectedMonthlyHours, workSettings.workDays, 'month').status === 'ahead' ? 'text-green-400' :
@@ -95,7 +103,7 @@ const SummaryModal = ({ isOpen, onClose, stats, workSettings, calculateProgressS
           
           <div className="bg-gray-700 p-4 rounded-lg">
             <h4 className="text-gray-300 text-sm mb-2">Total</h4>
-            <p className="text-2xl font-semibold">{stats.total}h</p>
+            <p className="text-2xl font-semibold">{totalHm.primary}</p>
           </div>
         </div>
       </div>
