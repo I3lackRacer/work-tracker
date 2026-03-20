@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import { data } from 'react-router-dom'
 
 const API_URL = (import.meta.env.VITE_API_URL || '') + "/api/v1"
 
@@ -55,68 +54,81 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('token')
-      const storedUsername = localStorage.getItem('username')
-      if (storedToken) {
-        const isValid = await validateToken(storedToken)
-        if (isValid) {
-          setToken(storedToken)
-          setIsAuthenticated(true)
-          if (storedUsername) {
-            setUsername(storedUsername)
+      try {
+        const storedToken = localStorage.getItem('token')
+        const storedUsername = localStorage.getItem('username')
+        if (storedToken) {
+          const isValid = await validateToken(storedToken)
+          if (isValid) {
+            setToken(storedToken)
+            setIsAuthenticated(true)
+            if (storedUsername) {
+              setUsername(storedUsername)
+            }
+          } else {
+            const storedRefresh = localStorage.getItem('refreshToken')
+            if (!storedRefresh) {
+              localStorage.removeItem('token')
+              localStorage.removeItem('username')
+            } else {
+              const refreshResult = await refreshAccessToken(storedRefresh)
+              if (!refreshResult) {
+                localStorage.removeItem('token')
+                localStorage.removeItem('refreshToken')
+                localStorage.removeItem('username')
+              } else {
+                localStorage.setItem('token', refreshResult.token)
+                localStorage.setItem('refreshToken', refreshResult.refreshToken)
+                localStorage.setItem('username', refreshResult.username)
+                setToken(refreshResult.token)
+                setUsername(refreshResult.username)
+                setIsAuthenticated(true)
+              }
+            }
           }
-        } else {
-          const refreshTokenString = localStorage.getItem("refreshToken")
-          if (!refreshTokenString) {
-            localStorage.removeItem('token')
-            localStorage.removeItem('username')
-            return
-          }
-
-          const refreshTokenRes = await refreshToken(refreshTokenString)
-          if (!refreshTokenRes) {
-            localStorage.removeItem('token')
-            localStorage.removeItem('refreshToken')
-            localStorage.removeItem('username')
-            return
-          }
-
-          localStorage.setItem('token', refreshTokenRes.token)
-          localStorage.setItem('refreshToken', refreshTokenRes.refreshToken)
-          localStorage.setItem('username', refreshTokenRes.username)
         }
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
 
-    initializeAuth()
+    void initializeAuth()
   }, [])
 
-  // Periodic token refresh - refresh every 7 days to keep users logged in
+  const logout = useCallback(() => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('username')
+    setToken(null)
+    setUsername(null)
+    setIsAuthenticated(false)
+    setError(null)
+  }, [])
+
+  // Proactive refresh: access tokens expire after ~24h (backend default). Refresh before that while the app stays open.
   useEffect(() => {
     if (!token) return
 
     const refreshInterval = setInterval(async () => {
       try {
-        const refreshTokenString = localStorage.getItem('refreshToken')
-        if (!refreshTokenString) {
+        const storedRefresh = localStorage.getItem('refreshToken')
+        if (!storedRefresh) {
           logout()
-          throw new Error('No refresh token found. Please login again.')
+          return
         }
-        const refreshResponse = await refreshToken(refreshTokenString)
+        const refreshResponse = await refreshAccessToken(storedRefresh)
         if (refreshResponse) {
-          console.log('Token refreshed automatically')
           setToken(refreshResponse.token)
           localStorage.setItem('token', refreshResponse.token)
           localStorage.setItem('refreshToken', refreshResponse.refreshToken)
         }
-      } catch (error) {
-        console.log('Auto-refresh failed, user will need to login on next action')
+      } catch {
+        /* next API call will 401-refresh or surface error */
       }
-    }, 7 * 24 * 60 * 60 * 1000) // 7 days
+    }, 23 * 60 * 60 * 1000)
 
     return () => clearInterval(refreshInterval)
-  }, [token])
+  }, [token, logout])
 
   const login = async (username: string, password: string) => {
     try {
@@ -179,15 +191,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('username')
-    setToken(null)
-    setUsername(null)
-    setIsAuthenticated(false)
-    setError(null)
-  }
-
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
@@ -206,9 +209,9 @@ export const useAuthenticatedFetch = () => {
     const makeRequest = async (authToken: string) => {
       const headers = {
         ...options.headers,
-        'Authorization': `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       }
 
       return fetch(url, {
@@ -218,37 +221,39 @@ export const useAuthenticatedFetch = () => {
       })
     }
 
-    // First attempt with current token
-    let response = await makeRequest(token!)
+    let accessToken = token ?? localStorage.getItem('token')
+    if (!accessToken) {
+      logout()
+      throw new Error('Not authenticated.')
+    }
 
-    // If token is expired (401), try to refresh it
-    if (response.status === 401 && token) {
+    let response = await makeRequest(accessToken)
+
+    if (response.status === 401) {
       try {
-        const refreshTokenString = localStorage.getItem('refreshToken')
-        if (!refreshTokenString) {
+        const storedRefresh = localStorage.getItem('refreshToken')
+        if (!storedRefresh) {
           logout()
           throw new Error('No refresh token found. Please login again.')
         }
 
-        const refreshResponse = await refreshToken(refreshTokenString)
+        const refreshResponse = await refreshAccessToken(storedRefresh)
 
-        if (refreshResponse && refreshResponse.token) {
-          // Retry the original request with the new token
-          response = await makeRequest(refreshResponse.token)
-          if (response.ok) {
-            setToken(refreshResponse.token)
-            localStorage.setItem('token', refreshResponse.token)
-            localStorage.setItem('refreshToken', refreshResponse.refreshToken)
-          } else {
+        if (refreshResponse?.token) {
+          accessToken = refreshResponse.token
+          setToken(refreshResponse.token)
+          localStorage.setItem('token', refreshResponse.token)
+          localStorage.setItem('refreshToken', refreshResponse.refreshToken)
+          response = await makeRequest(accessToken)
+          if (!response.ok) {
             logout()
             throw new Error('Session expired. Please login again.')
           }
         } else {
-          // Refresh failed, user needs to login again
           logout()
           throw new Error('Session expired. Please login again.')
         }
-      } catch (error) {
+      } catch {
         logout()
         throw new Error('Session expired. Please login again.')
       }
@@ -266,21 +271,23 @@ export const useAuth = () => {
   return context
 }
 
-export const refreshToken = async (refreshToken: string) => {
+/** Exchange a refresh JWT for new access + refresh tokens (matches backend Bearer prefix). */
+export async function refreshAccessToken(refreshTokenValue: string): Promise<AuthResponse | null> {
   try {
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
-      body: JSON.stringify({ refreshToken: `Bearer ${refreshToken}` }),
+      credentials: 'include',
+      body: JSON.stringify({ refreshToken: `Bearer ${refreshTokenValue}` }),
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      }
+        Accept: 'application/json',
+      },
     })
     if (response.ok) {
-      return await response.json()
+      return (await response.json()) as AuthResponse
     }
     return null
-  } catch (err) {
+  } catch {
     return null
   }
 }
