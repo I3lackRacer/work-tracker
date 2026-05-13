@@ -47,9 +47,11 @@ pipeline {
                 script {
                     sshagent(['ssh-credentials-netcup-shared']) {
                         withCredentials([string(credentialsId: 'work-tracker-jwt-secret', variable: 'JWT_SECRET')]) {
+                            // Use shell \$JWT_SECRET (escaped $) so Groovy does not interpolate the secret — see Jenkins groovy-string-interpolation.
+                            // SSH options: non-interactive agents have no TTY to accept host keys on first connect.
                             sh """
-                                scp ${DEPLOY_SCRIPT} server@work.suellner.dev:~/docker/work-tracker/${DEPLOY_SCRIPT}
-                                ssh server@work.suellner.dev "cd ~/docker/work-tracker/ && chmod +x ${DEPLOY_SCRIPT} && JWT_SECRET=${JWT_SECRET} ./${DEPLOY_SCRIPT}"
+                                scp -o StrictHostKeyChecking=accept-new ${DEPLOY_SCRIPT} server@work.suellner.dev:~/docker/work-tracker/${DEPLOY_SCRIPT}
+                                ssh -o StrictHostKeyChecking=accept-new server@work.suellner.dev "cd ~/docker/work-tracker/ && chmod +x ${DEPLOY_SCRIPT} && JWT_SECRET=\$JWT_SECRET ./${DEPLOY_SCRIPT}"
                             """
                         }
                     }

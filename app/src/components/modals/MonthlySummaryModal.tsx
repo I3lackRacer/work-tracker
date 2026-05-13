@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { WorkSession } from '../../types/work'
 import type { WorkSettings } from './SettingsModal'
+import { formatHoursAndMinutes } from '../../utils/workCalendarUtils'
+
+const hm = (hours: number) => formatHoursAndMinutes(hours).primary
 
 interface MonthlyStats {
   totalHours: number
@@ -246,7 +249,7 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-gray-400 text-sm">Total Hours</p>
-                    <p className="text-2xl font-bold">{stats.totalHours.toFixed(1)}h</p>
+                    <p className="text-2xl font-bold">{hm(stats.totalHours)}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Work Sessions</p>
@@ -258,7 +261,7 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Avg Session</p>
-                    <p className="text-2xl font-bold">{stats.averageSessionLength.toFixed(1)}h</p>
+                    <p className="text-2xl font-bold">{hm(stats.averageSessionLength)}</p>
                   </div>
                 </div>
               </div>
@@ -268,7 +271,9 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
                 <h4 className="text-lg font-semibold mb-3">Target Achievement</h4>
                 <div className="mb-3">
                   <div className="flex justify-between text-sm mb-1">
-                    <span>{stats.totalHours.toFixed(1)}h / {stats.targetHours}h</span>
+                    <span>
+                      {hm(stats.totalHours)} / {hm(stats.targetHours)}
+                    </span>
                     <span>{stats.targetAchievement.toFixed(1)}%</span>
                   </div>
                   <div className="h-3 bg-gray-600 rounded-full overflow-hidden">
@@ -282,10 +287,10 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
                   </div>
                 </div>
                 {stats.overtimeHours > 0 && (
-                  <p className="text-green-400 text-sm">+{stats.overtimeHours.toFixed(1)}h overtime</p>
+                  <p className="text-green-400 text-sm">+{hm(stats.overtimeHours)} overtime</p>
                 )}
                 {stats.undertimeHours > 0 && (
-                  <p className="text-red-400 text-sm">-{stats.undertimeHours.toFixed(1)}h under target</p>
+                  <p className="text-red-400 text-sm">-{hm(stats.undertimeHours)} under target</p>
                 )}
               </div>
 
@@ -295,14 +300,18 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
                 <div className="space-y-3">
                   <div>
                     <p className="text-gray-400 text-sm">Longest Session</p>
-                    <p className="font-semibold">{stats.longestSession.hours.toFixed(1)}h on {stats.longestSession.date}</p>
+                    <p className="font-semibold">
+                      {hm(stats.longestSession.hours)} on {stats.longestSession.date}
+                    </p>
                     {stats.longestSession.notes && (
                       <p className="text-gray-400 text-xs">{stats.longestSession.notes}</p>
                     )}
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Shortest Session</p>
-                    <p className="font-semibold">{stats.shortestSession.hours.toFixed(1)}h on {stats.shortestSession.date}</p>
+                    <p className="font-semibold">
+                      {hm(stats.shortestSession.hours)} on {stats.shortestSession.date}
+                    </p>
                     {stats.shortestSession.notes && (
                       <p className="text-gray-400 text-xs">{stats.shortestSession.notes}</p>
                     )}
@@ -319,11 +328,15 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
                 <div className="space-y-3">
                   <div>
                     <p className="text-gray-400 text-sm">Most Productive Day</p>
-                    <p className="font-semibold text-green-400">{stats.mostProductiveDay.day} ({stats.mostProductiveDay.hours.toFixed(1)}h)</p>
+                    <p className="font-semibold text-green-400">
+                      {stats.mostProductiveDay.day} ({hm(stats.mostProductiveDay.hours)})
+                    </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Least Productive Day</p>
-                    <p className="font-semibold text-red-400">{stats.leastProductiveDay.day} ({stats.leastProductiveDay.hours.toFixed(1)}h)</p>
+                    <p className="font-semibold text-red-400">
+                      {stats.leastProductiveDay.day} ({hm(stats.leastProductiveDay.hours)})
+                    </p>
                   </div>
                 </div>
               </div>
@@ -336,7 +349,7 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
                     <div key={day.date} className="flex justify-between items-center py-1 border-b border-gray-600 last:border-b-0">
                       <span className="text-sm">{formatDate(day.date)}</span>
                       <div className="text-right">
-                        <span className="font-semibold">{day.hours.toFixed(1)}h</span>
+                        <span className="font-semibold">{hm(day.hours)}</span>
                         <span className="text-gray-400 text-xs ml-2">({day.sessions} sessions)</span>
                       </div>
                     </div>
@@ -352,7 +365,7 @@ const MonthlySummaryModal = ({ isOpen, onClose, workSessions, workSettings }: Mo
                     <div key={week.week} className="flex justify-between items-center py-1 border-b border-gray-600 last:border-b-0">
                       <span className="text-sm">{week.week}</span>
                       <div className="text-right">
-                        <span className="font-semibold">{week.hours.toFixed(1)}h</span>
+                        <span className="font-semibold">{hm(week.hours)}</span>
                         <span className="text-gray-400 text-xs ml-2">({week.days} days)</span>
                       </div>
                     </div>

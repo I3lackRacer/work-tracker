@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import { data } from 'react-router-dom'
 
 const API_URL = (import.meta.env.VITE_API_URL || '') + "/api/v1"
 
@@ -22,6 +21,16 @@ interface AuthResponse {
   username: string
 }
 
+type TokenValidationResult =
+  | { status: 'valid'; username: string | null }
+  | { status: 'invalid' }
+  | { status: 'error' }
+
+type RefreshTokenResult =
+  | { status: 'success'; data: AuthResponse }
+  | { status: 'unauthorized' }
+  | { status: 'error' }
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -31,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [username, setUsername] = useState<string | null>(null)
 
-  const validateToken = async (token: string) => {
+  const validateToken = async (token: string): Promise<TokenValidationResult> => {
     try {
       const response = await fetch(`${API_URL}/auth/validate`, {
         method: 'GET',
@@ -43,79 +52,127 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       })
       if (response.ok) {
         const data = await response.json()
-        setUsername(data.username)
-        return true
+        return { status: 'valid', username: data.username ?? null }
       }
-      return false
+      if (response.status === 401 || response.status === 403) {
+        return { status: 'invalid' }
+      }
+      return { status: 'error' }
     } catch (err) {
-      return false
+      console.error(err)
+      return { status: 'error' }
     }
   }
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('token')
-      const storedUsername = localStorage.getItem('username')
-      if (storedToken) {
-        const isValid = await validateToken(storedToken)
-        if (isValid) {
+      try {
+        const storedUsername = localStorage.getItem('username')
+        const storedToken = localStorage.getItem('token')
+        const storedRefresh = localStorage.getItem('refreshToken')
+
+        const setAuthenticatedFromStorage = () => {
+          if (!storedToken) {
+            return
+          }
           setToken(storedToken)
           setIsAuthenticated(true)
           if (storedUsername) {
             setUsername(storedUsername)
           }
-        } else {
-          const refreshTokenString = localStorage.getItem("refreshToken")
-          if (!refreshTokenString) {
-            localStorage.removeItem('token')
-            localStorage.removeItem('username')
-            return
-          }
+        }
 
-          const refreshTokenRes = await refreshToken(refreshTokenString)
-          if (!refreshTokenRes) {
+        if (storedToken) {
+          const validationResult = await validateToken(storedToken)
+          if (validationResult.status === 'valid') {
+            setToken(storedToken)
+            setIsAuthenticated(true)
+            setUsername(validationResult.username ?? storedUsername)
+          } else {
+            if (!storedRefresh) {
+              if (validationResult.status === 'invalid') {
+                localStorage.removeItem('token')
+                localStorage.removeItem('username')
+              } else {
+                setAuthenticatedFromStorage()
+              }
+            } else {
+              const refreshResult = await refreshAccessToken(storedRefresh)
+              if (refreshResult.status === 'success') {
+                localStorage.setItem('token', refreshResult.data.token)
+                localStorage.setItem('refreshToken', refreshResult.data.refreshToken)
+                localStorage.setItem('username', refreshResult.data.username)
+                setToken(refreshResult.data.token)
+                setUsername(refreshResult.data.username)
+                setIsAuthenticated(true)
+              } else if (refreshResult.status === 'unauthorized') {
+                localStorage.removeItem('token')
+                localStorage.removeItem('refreshToken')
+                localStorage.removeItem('username')
+              } else {
+                setAuthenticatedFromStorage()
+              }
+            }
+          }
+        } else if (storedRefresh) {
+          const refreshResult = await refreshAccessToken(storedRefresh)
+          if (refreshResult.status === 'success') {
+            localStorage.setItem('token', refreshResult.data.token)
+            localStorage.setItem('refreshToken', refreshResult.data.refreshToken)
+            localStorage.setItem('username', refreshResult.data.username)
+            setToken(refreshResult.data.token)
+            setUsername(refreshResult.data.username)
+            setIsAuthenticated(true)
+          } else if (refreshResult.status === 'unauthorized') {
             localStorage.removeItem('token')
             localStorage.removeItem('refreshToken')
             localStorage.removeItem('username')
-            return
           }
-
-          localStorage.setItem('token', refreshTokenRes.token)
-          localStorage.setItem('refreshToken', refreshTokenRes.refreshToken)
-          localStorage.setItem('username', refreshTokenRes.username)
         }
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
 
-    initializeAuth()
+    void initializeAuth()
   }, [])
 
-  // Periodic token refresh - refresh every 7 days to keep users logged in
+  const logout = useCallback(() => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('username')
+    setToken(null)
+    setUsername(null)
+    setIsAuthenticated(false)
+    setError(null)
+  }, [])
+
+  // Proactive refresh: access tokens expire after ~24h (backend default). Refresh before that while the app stays open.
   useEffect(() => {
     if (!token) return
 
     const refreshInterval = setInterval(async () => {
       try {
-        const refreshTokenString = localStorage.getItem('refreshToken')
-        if (!refreshTokenString) {
+        const storedRefresh = localStorage.getItem('refreshToken')
+        if (!storedRefresh) {
+          return
+        }
+        const refreshResponse = await refreshAccessToken(storedRefresh)
+        if (refreshResponse.status === 'success') {
+          setToken(refreshResponse.data.token)
+          localStorage.setItem('token', refreshResponse.data.token)
+          localStorage.setItem('refreshToken', refreshResponse.data.refreshToken)
+          localStorage.setItem('username', refreshResponse.data.username)
+        } else if (refreshResponse.status === 'unauthorized') {
           logout()
-          throw new Error('No refresh token found. Please login again.')
         }
-        const refreshResponse = await refreshToken(refreshTokenString)
-        if (refreshResponse) {
-          console.log('Token refreshed automatically')
-          setToken(refreshResponse.token)
-          localStorage.setItem('token', refreshResponse.token)
-          localStorage.setItem('refreshToken', refreshResponse.refreshToken)
-        }
-      } catch (error) {
-        console.log('Auto-refresh failed, user will need to login on next action')
+      } catch {
+        /* next API call will 401-refresh or surface error */
       }
-    }, 7 * 24 * 60 * 60 * 1000) // 7 days
+    }, 23 * 60 * 60 * 1000)
 
     return () => clearInterval(refreshInterval)
-  }, [token])
+  }, [token, logout])
 
   const login = async (username: string, password: string) => {
     try {
@@ -178,15 +235,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('username')
-    setToken(null)
-    setUsername(null)
-    setIsAuthenticated(false)
-    setError(null)
-  }
-
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
@@ -205,9 +253,9 @@ export const useAuthenticatedFetch = () => {
     const makeRequest = async (authToken: string) => {
       const headers = {
         ...options.headers,
-        'Authorization': `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       }
 
       return fetch(url, {
@@ -217,39 +265,60 @@ export const useAuthenticatedFetch = () => {
       })
     }
 
-    // First attempt with current token
-    let response = await makeRequest(token!)
+    let accessToken = token ?? localStorage.getItem('token')
+    if (!accessToken) {
+      const storedRefresh = localStorage.getItem('refreshToken')
+      if (!storedRefresh) {
+        logout()
+        throw new Error('Not authenticated.')
+      }
 
-    // If token is expired (401), try to refresh it
-    if (response.status === 401 && token) {
+      const refreshResponse = await refreshAccessToken(storedRefresh)
+      if (refreshResponse.status === 'success') {
+        accessToken = refreshResponse.data.token
+        setToken(refreshResponse.data.token)
+        localStorage.setItem('token', refreshResponse.data.token)
+        localStorage.setItem('refreshToken', refreshResponse.data.refreshToken)
+        localStorage.setItem('username', refreshResponse.data.username)
+      } else if (refreshResponse.status === 'unauthorized') {
+        logout()
+        throw new Error('Session expired. Please login again.')
+      } else {
+        throw new Error('Temporary authentication issue. Please try again.')
+      }
+    }
+
+    let response = await makeRequest(accessToken)
+
+    if (response.status === 401) {
       try {
-        const refreshTokenString = localStorage.getItem('refreshToken')
-        if (!refreshTokenString) {
+        const storedRefresh = localStorage.getItem('refreshToken')
+        if (!storedRefresh) {
           logout()
           throw new Error('No refresh token found. Please login again.')
         }
 
-        const refreshResponse = await refreshToken(refreshTokenString)
+        const refreshResponse = await refreshAccessToken(storedRefresh)
 
-        if (refreshResponse && refreshResponse.token) {
-          // Retry the original request with the new token
-          response = await makeRequest(refreshResponse.token)
-          if (response.ok) {
-            setToken(refreshResponse.token)
-            localStorage.setItem('token', refreshResponse.token)
-            localStorage.setItem('refreshToken', refreshResponse.refreshToken)
-          } else {
+        if (refreshResponse.status === 'success') {
+          accessToken = refreshResponse.data.token
+          setToken(refreshResponse.data.token)
+          localStorage.setItem('token', refreshResponse.data.token)
+          localStorage.setItem('refreshToken', refreshResponse.data.refreshToken)
+          localStorage.setItem('username', refreshResponse.data.username)
+          response = await makeRequest(accessToken)
+          if (response.status === 401) {
             logout()
             throw new Error('Session expired. Please login again.')
           }
-        } else {
-          // Refresh failed, user needs to login again
+        } else if (refreshResponse.status === 'unauthorized') {
           logout()
           throw new Error('Session expired. Please login again.')
+        } else {
+          throw new Error('Temporary authentication issue. Please try again.')
         }
-      } catch (error) {
-        logout()
-        throw new Error('Session expired. Please login again.')
+      } catch {
+        throw new Error('Temporary authentication issue. Please try again.')
       }
     }
 
@@ -265,21 +334,26 @@ export const useAuth = () => {
   return context
 }
 
-export const refreshToken = async (refreshToken: string) => {
+/** Exchange a refresh JWT for new access + refresh tokens (matches backend Bearer prefix). */
+export async function refreshAccessToken(refreshTokenValue: string): Promise<RefreshTokenResult> {
   try {
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
-      body: JSON.stringify({ refreshToken: `Bearer ${refreshToken}` }),
+      credentials: 'include',
+      body: JSON.stringify({ refreshToken: `Bearer ${refreshTokenValue}` }),
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      }
+        Accept: 'application/json',
+      },
     })
     if (response.ok) {
-      return await response.json()
+      return { status: 'success', data: (await response.json()) as AuthResponse }
     }
-    return null
-  } catch (err) {
-    return null
+    if (response.status === 400 || response.status === 401 || response.status === 403) {
+      return { status: 'unauthorized' }
+    }
+    return { status: 'error' }
+  } catch {
+    return { status: 'error' }
   }
 }
