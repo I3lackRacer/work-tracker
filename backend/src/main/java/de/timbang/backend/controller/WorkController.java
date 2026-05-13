@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import de.timbang.backend.model.WorkSession;
+import de.timbang.backend.model.dto.response.ErrorRes;
 import de.timbang.backend.model.dto.response.WorkSessionResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -31,8 +32,11 @@ import de.timbang.backend.service.WorkService;
 @RequestMapping("/api/v1/work")
 public class WorkController {
 
-    @Autowired
-    private WorkService workService;
+    private final WorkService workService;
+
+    public WorkController(WorkService workService) {
+        this.workService = workService;
+    }
 
     @PostMapping("/clock-in")
     public ResponseEntity<?> clockIn(
@@ -42,7 +46,7 @@ public class WorkController {
             WorkSessionResponse entry = workService.clockIn(auth.getName(), request);
             return ResponseEntity.ok(entry);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ErrorRes.errorRes(e);
         }
     }
 
@@ -55,7 +59,7 @@ public class WorkController {
             WorkSessionResponse entry = workService.clockOut(auth.getName(), clockInId, request);
             return ResponseEntity.ok(entry);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ErrorRes.errorRes(e);
         }
     }
 
@@ -68,7 +72,7 @@ public class WorkController {
             List<WorkSessionResponse> entries = workService.getEntries(auth.getName(), start, end);
             return ResponseEntity.ok(entries);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ErrorRes.errorRes(e);
         }
     }
 
@@ -80,7 +84,7 @@ public class WorkController {
             List<WorkSessionResponse> entries = workService.getEntriesByPage(auth.getName(), page);
             return ResponseEntity.ok(entries);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ErrorRes.errorRes(e);
         }
     }
 
@@ -90,7 +94,7 @@ public class WorkController {
             WorkConfigResponse config = workService.getConfig(auth.getName());
             return ResponseEntity.ok(config);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ErrorRes.errorRes(e);
         }
     }
 
@@ -118,7 +122,7 @@ public class WorkController {
             WorkSessionResponse entry = workService.editWorkEntry(auth.getName(), entryId, request);
             return ResponseEntity.ok(entry);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ErrorRes.errorRes(e);
         }
     }
 } 

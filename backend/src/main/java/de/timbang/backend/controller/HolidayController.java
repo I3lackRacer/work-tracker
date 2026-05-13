@@ -2,6 +2,7 @@ package de.timbang.backend.controller;
 
 import de.timbang.backend.model.Holiday;
 import de.timbang.backend.model.State;
+import de.timbang.backend.model.dto.response.ErrorRes;
 import de.timbang.backend.model.dto.response.HolidayResponse;
 import de.timbang.backend.service.HolidayService;
 import org.springframework.http.ResponseEntity;
@@ -27,9 +28,11 @@ public class HolidayController {
 
     @GetMapping("/state/{stateString}")
     public ResponseEntity<?> getHolidaysByState(@PathVariable String stateString) {
-        State state = State.valueOf(stateString.toUpperCase());
-        if  (state == null) {
-            ResponseEntity.notFound().build();
+        State state;
+        try {
+            state = State.valueOf(stateString.toUpperCase());
+        } catch (IllegalStateException e) {
+            return ErrorRes.errorRes("State not found: " + stateString);
         }
 
         List<Holiday> holidaysByState = this.holidayService.getHolidaysByState(state);

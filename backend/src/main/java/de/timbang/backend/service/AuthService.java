@@ -2,6 +2,9 @@ package de.timbang.backend.service;
 
 import java.util.Optional;
 
+import de.timbang.backend.exception.InvalidPasswordException;
+import de.timbang.backend.exception.InvalidUsernamePasswordCombinationException;
+import de.timbang.backend.exception.UserAlreadyExistsException;
 import de.timbang.backend.model.JwtTokenPacket;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,20 +19,26 @@ import de.timbang.backend.security.JwtService;
 @Service
 public class AuthService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private JwtService jwtService;
+    private final JwtService jwtService;
 
-    public String register(RegisterRequest request) {
-        // Check if username already exists
+    public AuthService(JwtService jwtService, PasswordEncoder passwordEncoder, UserRepository userRepository) {
+        this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
+        this.userRepository = userRepository;
+    }
+
+    public User register(RegisterRequest request) throws UserAlreadyExistsException, InvalidPasswordException {
+        if (!isValidPassword(request.password())) {
+            throw new InvalidPasswordException();
+        }
+
         Optional<User> existingUser = userRepository.findByUsername(request.username());
         if (existingUser.isPresent()) {
-            throw new RuntimeException("Username already exists");
+            throw new UserAlreadyExistsException(request.username());
         }
 
         User user = new User();
@@ -38,18 +47,35 @@ public class AuthService {
 
         userRepository.save(user);
 
-        return "User registered successfully";
+        return user;
     }
 
-    public JwtTokenPacket login(LoginRequest credentials) {
+    private static final int PASSWORD_MIN_LENGTH = 6;
+    private static final String ALLOWED_SYMBOLS_PATTERN = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@# ";
+
+    private boolean isValidPassword(String password) {
+        if (password.length() < PASSWORD_MIN_LENGTH) {
+            return false;
+        }
+
+        for (char c : password.toCharArray()) {
+            if (!ALLOWED_SYMBOLS_PATTERN.contains(String.valueOf(c))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public JwtTokenPacket login(LoginRequest credentials) throws InvalidUsernamePasswordCombinationException {
         // Fetch the user by username
         Optional<User> user = userRepository.findByUsername(credentials.username());
         if (user.isEmpty()) {
-            throw new RuntimeException("Invalid username or password");
+            throw new InvalidUsernamePasswordCombinationException();
         }
 
         if (!passwordEncoder.matches(credentials.password(), user.get().getPassword())) {
-            throw new RuntimeException("Invalid username or password");
+            throw new InvalidUsernamePasswordCombinationException();
         }
         String refreshToken = jwtService.generateRefreshToken(user.get().getUsername());
         String token = jwtService.generateToken(credentials.username());
